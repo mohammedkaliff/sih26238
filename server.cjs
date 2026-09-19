@@ -105,79 +105,81 @@ function readJsonBody(request) {
   });
 }
 
-function createServer() {
-  return http.createServer(async (request, response) => {
-    try {
-      const url = new URL(request.url, 'http://localhost');
+async function handleRequest(request, response) {
+  try {
+    const url = new URL(request.url, 'http://localhost');
 
-      if (url.pathname === '/api/access-setting' && request.method === 'GET') {
-        return sendJson(response, 200, { accessMode: readAccessSetting() });
-      }
-
-      if (url.pathname === '/api/application-access' && request.method === 'GET') {
-        const session = getSession(request);
-        const isAdmin = session && session.role === 'Administrator';
-        if (readAccessSetting() === 'RESTRICTED' && !isAdmin) {
-          return sendJson(response, 403, { message: 'Access Restricted' });
-        }
-        return sendJson(response, 200, { allowed: true });
-      }
-
-      if (url.pathname === '/api/auth/login' && request.method === 'POST') {
-        ensureConfiguration();
-        const body = await readJsonBody(request);
-        const email = String(body.email || '').trim().toLowerCase();
-        const password = String(body.password || '');
-
-        if (!getAdminEmails().includes(email) || !safeEqual(password, getAdminPassword())) {
-          return sendJson(response, 401, { message: 'Invalid administrator credentials.' });
-        }
-
-        const token = crypto.randomBytes(32).toString('hex');
-        sessions.set(token, { email, role: 'Administrator', createdAt: Date.now() });
-        return sendJson(response, 200, {
-          user: { email, role: 'Administrator' }
-        }, {
-          'Set-Cookie': `admin_session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=28800${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
-        });
-      }
-
-      if (url.pathname === '/api/auth/logout' && request.method === 'POST') {
-        const token = parseCookies(request).admin_session;
-        if (token) sessions.delete(token);
-        return sendJson(response, 200, { ok: true }, {
-          'Set-Cookie': 'admin_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0'
-        });
-      }
-
-      if (url.pathname === '/api/auth/me' && request.method === 'GET') {
-        const session = getSession(request);
-        return session
-          ? sendJson(response, 200, { authenticated: true, user: { email: session.email, role: session.role } })
-          : sendJson(response, 401, { authenticated: false });
-      }
-
-      if (url.pathname === '/api/access-setting' && request.method === 'PUT') {
-        const session = getSession(request);
-        if (!session || session.role !== 'Administrator') {
-          return sendJson(response, 403, { message: 'Administrator authentication is required.' });
-        }
-
-        const body = await readJsonBody(request);
-        if (body.accessMode !== 'PUBLIC' && body.accessMode !== 'RESTRICTED') {
-          return sendJson(response, 400, { message: 'accessMode must be PUBLIC or RESTRICTED.' });
-        }
-
-        writeAccessSetting(body.accessMode);
-        return sendJson(response, 200, { accessMode: body.accessMode });
-      }
-
-      return sendJson(response, 404, { message: 'Not found.' });
-    } catch (error) {
-      const statusCode = error.message.includes('must be configured') ? 500 : 400;
-      return sendJson(response, statusCode, { message: error.message });
+    if (url.pathname === '/api/access-setting' && request.method === 'GET') {
+      return sendJson(response, 200, { accessMode: readAccessSetting() });
     }
-  });
+
+    if (url.pathname === '/api/application-access' && request.method === 'GET') {
+      const session = getSession(request);
+      const isAdmin = session && session.role === 'Administrator';
+      if (readAccessSetting() === 'RESTRICTED' && !isAdmin) {
+        return sendJson(response, 403, { message: 'Access Restricted' });
+      }
+      return sendJson(response, 200, { allowed: true });
+    }
+
+    if (url.pathname === '/api/auth/login' && request.method === 'POST') {
+      ensureConfiguration();
+      const body = await readJsonBody(request);
+      const email = String(body.email || '').trim().toLowerCase();
+      const password = String(body.password || '');
+
+      if (!getAdminEmails().includes(email) || !safeEqual(password, getAdminPassword())) {
+        return sendJson(response, 401, { message: 'Invalid administrator credentials.' });
+      }
+
+      const token = crypto.randomBytes(32).toString('hex');
+      sessions.set(token, { email, role: 'Administrator', createdAt: Date.now() });
+      return sendJson(response, 200, {
+        user: { email, role: 'Administrator' }
+      }, {
+        'Set-Cookie': `admin_session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=28800${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
+      });
+    }
+
+    if (url.pathname === '/api/auth/logout' && request.method === 'POST') {
+      const token = parseCookies(request).admin_session;
+      if (token) sessions.delete(token);
+      return sendJson(response, 200, { ok: true }, {
+        'Set-Cookie': 'admin_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0'
+      });
+    }
+
+    if (url.pathname === '/api/auth/me' && request.method === 'GET') {
+      const session = getSession(request);
+      return session
+        ? sendJson(response, 200, { authenticated: true, user: { email: session.email, role: session.role } })
+        : sendJson(response, 401, { authenticated: false });
+    }
+
+    if (url.pathname === '/api/access-setting' && request.method === 'PUT') {
+      const session = getSession(request);
+      if (!session || session.role !== 'Administrator') {
+        return sendJson(response, 403, { message: 'Administrator authentication is required.' });
+      }
+
+      const body = await readJsonBody(request);
+      if (body.accessMode !== 'PUBLIC' && body.accessMode !== 'RESTRICTED') {
+        return sendJson(response, 400, { message: 'accessMode must be PUBLIC or RESTRICTED.' });
+      }
+
+      writeAccessSetting(body.accessMode);
+      return sendJson(response, 200, { accessMode: body.accessMode });
+    }
+
+    return sendJson(response, 404, { message: 'Not found.' });
+  } catch (error) {
+    const statusCode = error.message.includes('must be configured') ? 500 : 400;
+    return sendJson(response, statusCode, { message: error.message });
+  }
+}
+
+function createServer() {
+  return http.createServer(handleRequest);
 }
 
 if (require.main === module) {
@@ -190,4 +192,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, readAccessSetting, writeAccessSetting };
+module.exports = { createServer, handleRequest, readAccessSetting, writeAccessSetting };
