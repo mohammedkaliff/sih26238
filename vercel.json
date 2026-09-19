@@ -1,9 +1,4 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "functions": {
-    "api/[...path].cjs": {
-      "includeFiles": "data/access-setting.json"
-    }
-  }
+  "outputDirectory": "dist"
 }
