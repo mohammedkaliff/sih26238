@@ -3,7 +3,7 @@
   "outputDirectory": "dist",
   "functions": {
     "api/[...path].cjs": {
-      "includeFiles": ["data/access-setting.json"]
+      "includeFiles": "data/access-setting.json"
     }
   }
 }
