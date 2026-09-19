@@ -48,6 +48,16 @@ test('invalid administrator credentials are rejected', async () => {
   assert.equal(response.status, 401);
 });
 
+test('login accepts a Vercel-stripped API prefix', async () => {
+  const response = await fetch(`${baseUrl}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'admin@example.com', password: 'wrong-password' })
+  });
+
+  assert.equal(response.status, 401);
+});
+
 test('authenticated administrators can persist the access setting', async () => {
   const loginResponse = await fetch(`${baseUrl}/api/auth/login`, {
     method: 'POST',

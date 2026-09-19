@@ -110,12 +110,13 @@ async function handleRequest(request, response) {
 
   try {
     const url = new URL(request.url, 'http://localhost');
+    const routePath = url.pathname.replace(/^\/api(?=\/|$)/, '');
 
-    if (url.pathname === '/api/access-setting' && request.method === 'GET') {
+    if (routePath === '/access-setting' && request.method === 'GET') {
       return sendJson(response, 200, { accessMode: readAccessSetting() });
     }
 
-    if (url.pathname === '/api/application-access' && request.method === 'GET') {
+    if (routePath === '/application-access' && request.method === 'GET') {
       const session = getSession(request);
       const isAdmin = session && session.role === 'Administrator';
       if (readAccessSetting() === 'RESTRICTED' && !isAdmin) {
@@ -124,7 +125,7 @@ async function handleRequest(request, response) {
       return sendJson(response, 200, { allowed: true });
     }
 
-    if (url.pathname === '/api/auth/login' && request.method === 'POST') {
+    if (routePath === '/auth/login' && request.method === 'POST') {
       ensureConfiguration();
       const body = await readJsonBody(request);
       const email = String(body.email || '').trim().toLowerCase();
@@ -143,7 +144,7 @@ async function handleRequest(request, response) {
       });
     }
 
-    if (url.pathname === '/api/auth/logout' && request.method === 'POST') {
+    if (routePath === '/auth/logout' && request.method === 'POST') {
       const token = parseCookies(request).admin_session;
       if (token) sessions.delete(token);
       return sendJson(response, 200, { ok: true }, {
@@ -151,14 +152,14 @@ async function handleRequest(request, response) {
       });
     }
 
-    if (url.pathname === '/api/auth/me' && request.method === 'GET') {
+    if (routePath === '/auth/me' && request.method === 'GET') {
       const session = getSession(request);
       return session
         ? sendJson(response, 200, { authenticated: true, user: { email: session.email, role: session.role } })
         : sendJson(response, 401, { authenticated: false });
     }
 
-    if (url.pathname === '/api/access-setting' && request.method === 'PUT') {
+    if (routePath === '/access-setting' && request.method === 'PUT') {
       const session = getSession(request);
       if (!session || session.role !== 'Administrator') {
         return sendJson(response, 403, { message: 'Administrator authentication is required.' });
