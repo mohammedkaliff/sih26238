@@ -106,6 +106,8 @@ function readJsonBody(request) {
 }
 
 async function handleRequest(request, response) {
+  console.log('[api] handleRequest invoked', request.method, request.url);
+
   try {
     const url = new URL(request.url, 'http://localhost');
 
