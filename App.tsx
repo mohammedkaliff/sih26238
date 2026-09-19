@@ -72,10 +72,11 @@ async function readJsonResponse(response: Response): Promise<Record<string, unkn
   }
 }
 
-const ALLOWED_ADMIN_EMAILS = ['mohammedkaliff10@gmail.com'];
+const ALLOWED_ADMIN_EMAILS = ['umarfarookm198@gmail.com', 'mohammedkaliff10@gmail.com'];
 
 const PRESET_ACCOUNTS: Account[] = [
   { id: '1', name: 'Kaliff', email: 'mohammedkaliff10@gmail.com', role: 'Super Administrator', avatar: 'K' },
+  { id: '2', name: 'Umar Farook', email: 'umarfarookm198@gmail.com', role: 'Administrator', avatar: 'U' },
   { id: '3', name: 'Unauthorized Student', email: 'student.test@gmail.com', role: 'Public Guest', avatar: 'S' }
 ];
 
