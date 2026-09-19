@@ -550,11 +550,19 @@ export default function App() {
         </div>
         <button
           onClick={async () => {
-            const response = await fetch('/api/auth/logout', { method: 'POST' });
-            await readJsonResponse(response);
-            setIsLoggedIn(false);
-            setForceLogin(true);
-            setAuthError('');
+            try {
+              const response = await fetch('/api/auth/logout', { method: 'POST' });
+              const data = await readJsonResponse(response);
+              if (!response.ok) {
+                throw new Error(typeof data.message === 'string' ? data.message : 'Unable to sign out.');
+              }
+              setAuthError('');
+            } catch (error) {
+              setAuthError(error instanceof Error ? error.message : 'Unable to sign out.');
+            } finally {
+              setIsLoggedIn(false);
+              setForceLogin(true);
+            }
           }}
           className="text-slate-400 hover:text-amber-400 transition-colors underline"
         >
