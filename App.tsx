@@ -682,7 +682,7 @@ export default function App() {
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={accessMode === 'PUBLIC'}
+                      checked={accessMode === 'RESTRICTED'}
                       onChange={handleAccessModeToggle}
                       disabled={accessSettingSaving || accessSettingLoading}
                       className="sr-only peer"
