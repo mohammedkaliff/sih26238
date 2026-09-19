@@ -5,7 +5,6 @@ const path = require('node:path');
 
 const ROOT_DIR = __dirname;
 const DATA_FILE = path.join(ROOT_DIR, 'data', 'access-setting.json');
-const sessions = new Map();
 
 function loadEnvFile() {
   const envFile = path.join(ROOT_DIR, '.env');
@@ -35,10 +34,24 @@ function getAdminPassword() {
   return process.env.ADMIN_PASSWORD || '';
 }
 
+function getSessionSecret() {
+  return process.env.SESSION_SECRET || getAdminPassword();
+}
+
 function ensureConfiguration() {
   if (getAdminEmails().length === 0 || !getAdminPassword()) {
     throw new Error('ADMIN_EMAILS and ADMIN_PASSWORD must be configured in .env. See .env.example.');
   }
+}
+
+function createSessionToken(email) {
+  const payload = Buffer.from(JSON.stringify({
+    email,
+    role: 'Administrator',
+    expiresAt: Date.now() + 8 * 60 * 60 * 1000
+  })).toString('base64url');
+  const signature = crypto.createHmac('sha256', getSessionSecret()).update(payload).digest('base64url');
+  return `${payload}.${signature}`;
 }
 
 function readAccessSetting() {
@@ -75,7 +88,20 @@ function safeEqual(left, right) {
 
 function getSession(request) {
   const token = parseCookies(request).admin_session;
-  return token ? sessions.get(token) : undefined;
+  if (!token) return undefined;
+
+  const [payload, signature] = token.split('.');
+  if (!payload || !signature) return undefined;
+
+  const expectedSignature = crypto.createHmac('sha256', getSessionSecret()).update(payload).digest('base64url');
+  if (!safeEqual(signature, expectedSignature)) return undefined;
+
+  try {
+    const session = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    return session.expiresAt > Date.now() ? session : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function sendJson(response, statusCode, body, headers = {}) {
@@ -135,8 +161,7 @@ async function handleRequest(request, response) {
         return sendJson(response, 401, { message: 'Invalid administrator credentials.' });
       }
 
-      const token = crypto.randomBytes(32).toString('hex');
-      sessions.set(token, { email, role: 'Administrator', createdAt: Date.now() });
+      const token = createSessionToken(email);
       return sendJson(response, 200, {
         user: { email, role: 'Administrator' }
       }, {
@@ -145,8 +170,6 @@ async function handleRequest(request, response) {
     }
 
     if (routePath === '/auth/logout' && request.method === 'POST') {
-      const token = parseCookies(request).admin_session;
-      if (token) sessions.delete(token);
       return sendJson(response, 200, { ok: true }, {
         'Set-Cookie': 'admin_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0'
       });
