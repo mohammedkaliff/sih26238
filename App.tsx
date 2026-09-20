@@ -54,6 +54,7 @@ type ApplicationDocument = {
   name: string;
   url: string;
   type?: string;
+  documentType?: string;
 };
 
 type AppFormData = {
@@ -97,6 +98,16 @@ const CASTES = ['General', 'OBC', 'SC', 'ST', 'EWS'];
 const GENDERS = ['Male', 'Female', 'Other'];
 const OCCUPATIONS = ['Student', 'Farmer', 'Disabled', 'Senior Citizen', 'Minority', 'Entrepreneur'];
 const EDUCATION_LEVELS = ['School', 'Undergraduate', 'Postgraduate', 'M.Phil', 'Ph.D.'];
+const REQUIRED_UPLOADS = [
+  { key: 'casteCertificate', label: 'Caste / Tribe Certificate' },
+  { key: 'incomeCertificate', label: 'Income Certificate' },
+  { key: 'identityProof', label: 'Aadhaar Card / ID Proof' },
+  { key: 'bankProof', label: 'Bank Passbook / Account Proof' },
+  { key: 'instituteProof', label: 'Institute Bonafide / Admission Proof' },
+  { key: 'photo', label: 'Passport-size Photo' }
+];
+const MAX_UPLOAD_SIZE = 5 * 1024 * 1024;
+const ACCEPTED_UPLOAD_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 
 function checkSchemeEligibility(scheme: Scheme, data: CalcData): { isEligible: boolean; reasons: string[] } {
   const criteria = scheme.eligibility;
@@ -251,9 +262,14 @@ function ApplicationDetailModal({
           {application.documents.length > 0 ? (
             <div className="space-y-2 text-xs">
               {application.documents.map((document) => (
-                <a key={document.name} href={document.url} target="_blank" rel="noreferrer" className="block text-sky-400 hover:text-sky-300 underline">
-                  {document.name}{document.type ? ` (${document.type})` : ''}
-                </a>
+                <div key={`${document.documentType || 'document'}-${document.name}`} className="flex items-center gap-3">
+                  {document.type?.startsWith('image/') && (
+                    <img src={document.url} alt={document.documentType || document.name} className="h-12 w-12 rounded object-cover border border-slate-700" />
+                  )}
+                  <a href={document.url} target="_blank" rel="noreferrer" className="text-sky-400 hover:text-sky-300 underline break-all">
+                    {document.documentType ? `${document.documentType}: ` : ''}{document.name}{document.type ? ` (${document.type})` : ''}
+                  </a>
+                </div>
               ))}
             </div>
           ) : (
@@ -404,6 +420,8 @@ export default function App() {
     ifscCode: 'SBIN0001234',
     declarationAccepted: false
   });
+  const [uploadedDocuments, setUploadedDocuments] = useState<Record<string, ApplicationDocument>>({});
+  const [documentUploadError, setDocumentUploadError] = useState<string>('');
 
   const [calcData, setCalcData] = useState<CalcData>({
     income: '180000',
@@ -722,6 +740,12 @@ export default function App() {
   const handleApplicationSubmit = () => {
     if (!selectedSchemeForApply) return;
 
+    const missingDocuments = REQUIRED_UPLOADS.filter(({ key }) => !uploadedDocuments[key]);
+    if (missingDocuments.length > 0) {
+      setDocumentUploadError(`Please upload: ${missingDocuments.map(({ label }) => label).join(', ')}.`);
+      return;
+    }
+
     const newApp: ApplicationRecord = {
       id: `APP-2026-${Math.floor(1000 + Math.random() * 9000)}`,
       applicantName: appFormData.fullName,
@@ -745,13 +769,54 @@ export default function App() {
       amount: selectedSchemeForApply.amount,
       status: 'Submitted & Pending Verification',
       stage: 1,
-      documents: []
+      documents: Object.values(uploadedDocuments)
     };
 
     setApplications((prev) => [newApp, ...prev]);
     setIsApplyModalOpen(false);
+    setUploadedDocuments({});
+    setDocumentUploadError('');
     setActiveTab('tracker');
     showToast('Scholarship application submitted successfully!');
+  };
+
+  const handleDocumentUpload = (documentKey: string, documentLabel: string, file: File | undefined) => {
+    if (!file) return;
+
+    if (!ACCEPTED_UPLOAD_TYPES.includes(file.type)) {
+      setDocumentUploadError(`${documentLabel} must be a PDF, JPG, or PNG file.`);
+      return;
+    }
+    if (file.size > MAX_UPLOAD_SIZE) {
+      setDocumentUploadError(`${documentLabel} must be 5MB or smaller.`);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') return;
+      setUploadedDocuments((previous) => ({
+        ...previous,
+        [documentKey]: {
+          name: file.name,
+          url: reader.result as string,
+          type: file.type,
+          documentType: documentLabel
+        }
+      }));
+      setDocumentUploadError('');
+    };
+    reader.onerror = () => setDocumentUploadError(`Unable to read ${documentLabel}. Please try again.`);
+    reader.readAsDataURL(file);
+  };
+
+  const removeDocument = (documentKey: string) => {
+    setUploadedDocuments((previous) => {
+      const next = { ...previous };
+      delete next[documentKey];
+      return next;
+    });
+    setDocumentUploadError('');
   };
 
   const handleApproveApplication = (appId: string) => {
@@ -1044,6 +1109,8 @@ export default function App() {
                     <button
                       onClick={() => {
                         setSelectedSchemeForApply(scheme);
+                        setUploadedDocuments({});
+                        setDocumentUploadError('');
                         setIsApplyModalOpen(true);
                       }}
                       className="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs"
@@ -1300,7 +1367,41 @@ export default function App() {
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
                 placeholder="Full Name"
               />
+              <div className="border-t border-slate-800 pt-4 space-y-3">
+                <div>
+                  <h4 className="font-bold text-white">Upload Documents</h4>
+                  <p className="text-slate-400 mt-1">PDF, JPG, or PNG only. Maximum 5MB per file.</p>
+                </div>
+                {REQUIRED_UPLOADS.map(({ key, label }) => {
+                  const uploadedDocument = uploadedDocuments[key];
+                  return (
+                    <div key={key} className="rounded-xl border border-slate-800 bg-slate-950 p-3">
+                      <label className="block text-slate-300 font-bold mb-2">{label} <span className="text-rose-400">*</span></label>
+                      <input
+                        type="file"
+                        accept="application/pdf,image/jpeg,image/png"
+                        onChange={(event) => handleDocumentUpload(key, label, event.target.files?.[0])}
+                        className="w-full text-xs text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-amber-500 file:px-3 file:py-2 file:font-bold file:text-slate-950"
+                      />
+                      {uploadedDocument && (
+                        <div className="mt-2 flex items-center justify-between gap-2 text-emerald-400">
+                          <span className="truncate">Uploaded: {uploadedDocument.name}</span>
+                          <button type="button" onClick={() => removeDocument(key)} className="shrink-0 text-rose-400 hover:text-rose-300 underline">
+                            Remove
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {documentUploadError && (
+                  <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-rose-300" role="alert">
+                    {documentUploadError}
+                  </div>
+                )}
+              </div>
               <button
+                type="button"
                 onClick={handleApplicationSubmit}
                 className="w-full bg-emerald-500 text-slate-950 font-bold py-2.5 rounded-xl"
               >
