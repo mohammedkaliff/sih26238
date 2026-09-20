@@ -35,12 +35,24 @@ type ApplicationRecord = {
   id: string;
   applicantName: string;
   applicantEmail: string;
+  personalInfo: Omit<AppFormData, 'declarationAccepted'>;
+  eligibilityInputs: CalcData;
   schemeId: string;
   schemeTitle: string;
+  schemeDescription: string;
   appliedDate: string;
+  submittedAt: string;
+  lastUpdated: string;
   amount: string;
   status: string;
   stage: number;
+  documents: ApplicationDocument[];
+};
+
+type ApplicationDocument = {
+  name: string;
+  url: string;
+  type?: string;
 };
 
 type AppFormData = {
@@ -122,6 +134,136 @@ function checkSchemeEligibility(scheme: Scheme, data: CalcData): { isEligible: b
   return { isEligible: reasons.length === 0, reasons };
 }
 
+function ApplicationDetailModal({
+  application,
+  onClose
+}: {
+  application: ApplicationRecord;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  const formatTimestamp = (value: string) => new Date(value).toLocaleString();
+  const personalFields = [
+    ['Full name', application.personalInfo.fullName],
+    ['Email', application.applicantEmail],
+    ['Tribe name', application.personalInfo.tribeName],
+    ['Caste certificate', application.personalInfo.casteCertNo],
+    ['Institute', application.personalInfo.instituteName],
+    ['Course', application.personalInfo.courseName],
+    ['Bank account', application.personalInfo.bankAccNo],
+    ['IFSC code', application.personalInfo.ifscCode]
+  ];
+  const eligibilityFields = [
+    ['Annual income', `₹${Number(application.eligibilityInputs.income).toLocaleString()}`],
+    ['State', application.eligibilityInputs.state],
+    ['Caste / category', application.eligibilityInputs.caste],
+    ['Gender', application.eligibilityInputs.gender],
+    ['Occupation', application.eligibilityInputs.occupation],
+    ['Age', application.eligibilityInputs.age],
+    ['Education', application.eligibilityInputs.education]
+  ];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-slate-950/80 flex items-center justify-center p-4"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="application-detail-title"
+        className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-2xl"
+      >
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div>
+            <div className="text-xs font-mono font-bold text-amber-400">{application.id}</div>
+            <h2 id="application-detail-title" className="text-xl font-bold text-white mt-1">Application details</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close application details"
+            className="text-2xl leading-none text-slate-400 hover:text-white px-2"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+          <div>
+            <h3 className="text-sm font-bold text-amber-400 mb-3">Applicant information</h3>
+            <div className="space-y-2">
+              {personalFields.map(([label, value]) => (
+                <div key={label} className="flex flex-col sm:flex-row sm:justify-between gap-1 border-b border-slate-800 pb-2">
+                  <span className="text-slate-400">{label}</span>
+                  <span className="text-white sm:text-right break-words">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-bold text-amber-400 mb-3">Submitted eligibility inputs</h3>
+            <div className="space-y-2">
+              {eligibilityFields.map(([label, value]) => (
+                <div key={label} className="flex justify-between gap-4 border-b border-slate-800 pb-2">
+                  <span className="text-slate-400">{label}</span>
+                  <span className="text-white text-right">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 border-t border-slate-800 pt-5 space-y-3 text-xs">
+          <h3 className="text-sm font-bold text-amber-400">Scheme</h3>
+          <div className="font-bold text-white">{application.schemeTitle}</div>
+          <div className="text-slate-400">Scheme ID: <span className="text-white">{application.schemeId}</span></div>
+          <p className="text-slate-400 leading-relaxed">{application.schemeDescription}</p>
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div className="bg-slate-950 rounded-xl p-3"><span className="text-slate-400 block">Status</span><strong className="text-white">{application.status}</strong></div>
+          <div className="bg-slate-950 rounded-xl p-3"><span className="text-slate-400 block">Stage</span><strong className="text-white">{application.stage} / 4</strong></div>
+          <div className="bg-slate-950 rounded-xl p-3"><span className="text-slate-400 block">Amount</span><strong className="text-white">{application.amount}</strong></div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-400">
+          <div>Application date: <span className="text-white">{application.appliedDate}</span></div>
+          <div>Submitted: <span className="text-white">{formatTimestamp(application.submittedAt)}</span></div>
+          <div>Last updated: <span className="text-white">{formatTimestamp(application.lastUpdated)}</span></div>
+        </div>
+
+        <div className="mt-6 border-t border-slate-800 pt-5">
+          <h3 className="text-sm font-bold text-amber-400 mb-3">Documents</h3>
+          {application.documents.length > 0 ? (
+            <div className="space-y-2 text-xs">
+              {application.documents.map((document) => (
+                <a key={document.name} href={document.url} target="_blank" rel="noreferrer" className="block text-sky-400 hover:text-sky-300 underline">
+                  {document.name}{document.type ? ` (${document.type})` : ''}
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500">No documents uploaded.</p>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 async function readJsonResponse(response: Response): Promise<Record<string, unknown>> {
   const responseText = await response.text();
   if (!responseText.trim()) {
@@ -159,6 +301,7 @@ export default function App() {
   const [isApplyModalOpen, setIsApplyModalOpen] = useState<boolean>(false);
   const [selectedSchemeForApply, setSelectedSchemeForApply] = useState<Scheme | null>(null);
   const [selectedSchemeForDetail, setSelectedSchemeForDetail] = useState<Scheme | null>(null);
+  const [selectedApplication, setSelectedApplication] = useState<ApplicationRecord | null>(null);
   const [appStep, setAppStep] = useState<number>(1);
   const [appFormData, setAppFormData] = useState<AppFormData>({
     fullName: 'Kaliff',
@@ -354,23 +497,60 @@ export default function App() {
       id: 'APP-2026-9041',
       applicantName: 'Kaliff',
       applicantEmail: 'mohammedkaliff10@gmail.com',
+      personalInfo: {
+        fullName: 'Kaliff',
+        tribeName: 'Santhal',
+        casteCertNo: 'ST-OD-2026-9901',
+        instituteName: 'National Institute of Technology',
+        courseName: 'B.Tech Computer Science',
+        bankAccNo: '39482019284',
+        ifscCode: 'SBIN0001234'
+      },
+      eligibilityInputs: {
+        income: '180000', state: 'Odisha', caste: 'ST', gender: 'Other',
+        occupation: 'Student', age: '22', education: 'Undergraduate'
+      },
       schemeId: 'SCH-002',
       schemeTitle: 'Top Class Education Scheme for ST Students',
+      schemeDescription: 'Full financial support for ST students pursuing studies in notified premier institutes like IITs, NITs, IIMs, and AIIMS.',
       appliedDate: '2026-08-12',
+      submittedAt: '2026-08-12T09:30:00.000Z',
+      lastUpdated: '2026-08-14T11:15:00.000Z',
       amount: '₹2,50,000',
       status: 'Verified by Nodal Officer',
-      stage: 3
+      stage: 3,
+      documents: [
+        { name: 'Caste certificate', url: '#', type: 'PDF' },
+        { name: 'Admission letter', url: '#', type: 'PDF' }
+      ]
     },
     {
       id: 'APP-2026-8812',
       applicantName: 'Umar Farook',
       applicantEmail: 'umarfarookm198@gmail.com',
+      personalInfo: {
+        fullName: 'Umar Farook',
+        tribeName: 'Santhal',
+        casteCertNo: 'ST-OD-2026-8802',
+        instituteName: 'University of Oxford',
+        courseName: 'M.Sc. Computer Science',
+        bankAccNo: '39482019285',
+        ifscCode: 'SBIN0001234'
+      },
+      eligibilityInputs: {
+        income: '240000', state: 'Odisha', caste: 'ST', gender: 'Male',
+        occupation: 'Student', age: '24', education: 'Postgraduate'
+      },
       schemeId: 'SCH-001',
       schemeTitle: 'National Overseas Scholarship for ST Students',
+      schemeDescription: 'Financial assistance to meritorious ST students for pursuing Master degree, Ph.D. and Post-Doctoral research abroad.',
       appliedDate: '2026-07-29',
+      submittedAt: '2026-07-29T08:45:00.000Z',
+      lastUpdated: '2026-08-02T15:20:00.000Z',
       amount: '₹20,00,000',
       status: 'Sanctioned & Disbursed',
-      stage: 4
+      stage: 4,
+      documents: []
     }
   ]);
 
@@ -450,12 +630,26 @@ export default function App() {
       id: `APP-2026-${Math.floor(1000 + Math.random() * 9000)}`,
       applicantName: appFormData.fullName,
       applicantEmail: currentUser.email,
+      personalInfo: {
+        fullName: appFormData.fullName,
+        tribeName: appFormData.tribeName,
+        casteCertNo: appFormData.casteCertNo,
+        instituteName: appFormData.instituteName,
+        courseName: appFormData.courseName,
+        bankAccNo: appFormData.bankAccNo,
+        ifscCode: appFormData.ifscCode
+      },
+      eligibilityInputs: { ...calcData },
       schemeId: selectedSchemeForApply.id,
       schemeTitle: selectedSchemeForApply.title,
+      schemeDescription: selectedSchemeForApply.description,
       appliedDate: new Date().toISOString().split('T')[0],
+      submittedAt: new Date().toISOString(),
+      lastUpdated: new Date().toISOString(),
       amount: selectedSchemeForApply.amount,
       status: 'Submitted & Pending Verification',
-      stage: 1
+      stage: 1,
+      documents: []
     };
 
     setApplications((prev) => [newApp, ...prev]);
@@ -819,15 +1013,36 @@ export default function App() {
                   </thead>
                   <tbody className="divide-y divide-slate-800">
                     {applications.map((app) => (
-                      <tr key={app.id}>
+                      <tr
+                        key={app.id}
+                        onClick={() => setSelectedApplication(app)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') setSelectedApplication(app);
+                        }}
+                        tabIndex={0}
+                        className="cursor-pointer hover:bg-slate-800/60 focus:outline-none focus:bg-slate-800/60"
+                      >
                         <td className="p-3 font-mono font-bold text-amber-400">{app.id}</td>
                         <td className="p-3">{app.applicantName}</td>
                         <td className="p-3">{app.schemeTitle}</td>
                         <td className="p-3">{app.status}</td>
                         <td className="p-3 text-right">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedApplication(app);
+                            }}
+                            className="text-sky-400 hover:text-sky-300 font-bold px-3 py-1 rounded text-xs mr-2"
+                          >
+                            View
+                          </button>
                           {app.stage < 4 && (
                             <button
-                              onClick={() => handleApproveApplication(app.id)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleApproveApplication(app.id);
+                              }}
                               className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1 rounded text-xs"
                             >
                               Approve & Pay
@@ -848,10 +1063,16 @@ export default function App() {
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
               <h2 className="text-xl font-bold text-white mb-4">Application Tracker</h2>
               {applications.map((app) => (
-                <div key={app.id} className="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-4">
+                <button
+                  key={app.id}
+                  type="button"
+                  onClick={() => setSelectedApplication(app)}
+                  className="block w-full text-left bg-slate-950 p-4 rounded-xl border border-slate-800 mb-4 hover:border-amber-400/50 focus:outline-none focus:border-amber-400"
+                >
                   <div className="font-bold text-amber-400">{app.id} - {app.schemeTitle}</div>
                   <div className="text-xs text-slate-400 mt-1">Status: {app.status}</div>
-                </div>
+                  <div className="text-xs text-sky-400 mt-2">View application details</div>
+                </button>
               ))}
             </div>
           </div>
@@ -937,6 +1158,13 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {selectedApplication && (
+        <ApplicationDetailModal
+          application={selectedApplication}
+          onClose={() => setSelectedApplication(null)}
+        />
+      )}
 
       {isApplyModalOpen && selectedSchemeForApply && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 flex items-center justify-center p-4">
