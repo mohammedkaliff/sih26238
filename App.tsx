@@ -318,11 +318,11 @@ function SchemeDetailModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="scheme-detail-title"
-        className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-2xl"
+        className="scheme-detail-modal bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-3xl p-5 sm:p-6 shadow-2xl"
       >
-        <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="scheme-detail-header flex items-start justify-between gap-4 mb-6">
           <div>
-            <div className="text-xs font-mono font-bold text-amber-400">{scheme.id}</div>
+            <div className="scheme-reference text-xs font-mono font-bold text-amber-400">{scheme.id}</div>
             <h2 id="scheme-detail-title" className="text-xl font-bold text-white mt-1">{scheme.title}</h2>
           </div>
           <button type="button" onClick={onClose} aria-label="Close scheme details" className="text-2xl leading-none text-slate-400 hover:text-white px-2">
@@ -1392,8 +1392,8 @@ export default function App() {
 
       {isApplyModalOpen && selectedSchemeForApply && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4">
-            <div className="flex items-center justify-between gap-3">
+          <div className="apply-modal bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6">
+            <div className="apply-modal-header flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={handleBackToSchemes}
@@ -1403,8 +1403,8 @@ export default function App() {
                 <span>Back to Scholarships</span>
               </button>
             </div>
-            <h3 className="text-lg font-bold text-white">Apply for {selectedSchemeForApply.title}</h3>
-            <div className="space-y-3 text-xs">
+            <h3 className="apply-modal-title text-lg font-bold text-white">Apply for {selectedSchemeForApply.title}</h3>
+            <div className="apply-modal-content space-y-3 text-xs">
               <input
                 type="text"
                 value={appFormData.fullName}
@@ -1445,6 +1445,8 @@ export default function App() {
                   </div>
                 )}
               </div>
+            </div>
+            <div className="apply-modal-footer">
               <button
                 type="button"
                 onClick={handleApplicationSubmit}
