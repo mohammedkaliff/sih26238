@@ -195,11 +195,10 @@ function ApplicationDetailModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="application-detail-title"
-        className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-2xl"
+        className="application-detail-modal bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-3xl p-5 sm:p-6 shadow-2xl"
       >
         <div className="flex items-start justify-between gap-4 mb-6">
           <div>
-            <div className="text-xs font-mono font-bold text-amber-400">{application.id}</div>
             <h2 id="application-detail-title" className="text-xl font-bold text-white mt-1">Application details</h2>
           </div>
           <button
@@ -218,7 +217,7 @@ function ApplicationDetailModal({
             <div className="space-y-2">
               {personalFields.map(([label, value]) => (
                 <div key={label} className="flex flex-col sm:flex-row sm:justify-between gap-1 border-b border-slate-800 pb-2">
-                  <span className="text-slate-400">{label}</span>
+                  <span className="text-sm font-bold text-slate-300">{label}</span>
                   <span className="text-white sm:text-right break-words">{value}</span>
                 </div>
               ))}
@@ -229,9 +228,9 @@ function ApplicationDetailModal({
             <h3 className="text-sm font-bold text-amber-400 mb-3">Submitted eligibility inputs</h3>
             <div className="space-y-2">
               {eligibilityFields.map(([label, value]) => (
-                <div key={label} className="flex justify-between gap-4 border-b border-slate-800 pb-2">
-                  <span className="text-slate-400">{label}</span>
-                  <span className="text-white text-right">{value}</span>
+                <div key={label} className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3 border-b border-slate-800 pb-2">
+                  <span className="text-sm font-bold text-slate-300">{label}</span>
+                  <span className="text-white">{value}</span>
                 </div>
               ))}
             </div>
@@ -396,6 +395,7 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [customEmailInput, setCustomEmailInput] = useState<string>('');
   const [loginPassword, setLoginPassword] = useState<string>('');
+  const [showLoginPassword, setShowLoginPassword] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string>('');
   const [forceLogin, setForceLogin] = useState<boolean>(false);
 
@@ -441,6 +441,34 @@ export default function App() {
     setToastMessage(msg);
     window.setTimeout(() => setToastMessage(null), 3500);
   };
+
+  useEffect(() => {
+    const revealItems = document.querySelectorAll<HTMLElement>('[data-reveal]');
+    if (!('IntersectionObserver' in window)) {
+      revealItems.forEach((item) => item.classList.add('is-visible'));
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px -40px' });
+
+    revealItems.forEach((item) => {
+      const bounds = item.getBoundingClientRect();
+      const isInitiallyVisible = bounds.top < window.innerHeight && bounds.bottom > 0;
+      if (isInitiallyVisible) {
+        item.classList.add('is-visible');
+      } else {
+        observer.observe(item);
+      }
+    });
+    return () => observer.disconnect();
+  }, [activeTab, accessMode, calcResult, forceLogin, isLoggedIn, searchQuery]);
 
   useEffect(() => {
     let isMounted = true;
@@ -952,26 +980,43 @@ export default function App() {
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
               Verify Custom Email:
             </label>
-            <div className="flex space-x-2">
+            <div className="space-y-3">
               <input
                 type="email"
                 placeholder="Enter email..."
                 value={customEmailInput}
                 onChange={(event) => setCustomEmailInput(event.target.value)}
-                className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500"
                 required
               />
-              <input
-                type="password"
-                placeholder="Password..."
-                value={loginPassword}
-                onChange={(event) => setLoginPassword(event.target.value)}
-                className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500"
-                required
-              />
+              <div className="password-field">
+                <input
+                  type={showLoginPassword ? 'text' : 'password'}
+                  placeholder="Password..."
+                  value={loginPassword}
+                  onChange={(event) => setLoginPassword(event.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500"
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowLoginPassword((visible) => !visible)}
+                  aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
+                  title={showLoginPassword ? 'Hide password' : 'Show password'}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    {showLoginPassword ? (
+                      <path d="M3 3l18 18M10.6 10.6a2 2 0 002.8 2.8M9.9 5.2A10.8 10.8 0 0112 5c5 0 8.7 3.6 10 7-0.4 1.1-1.1 2.2-2 3.2M6.1 6.1C3.9 7.5 2.5 9.4 2 12c1.3 3.4 5 7 10 7 1.3 0 2.5-.2 3.6-.7" />
+                    ) : (
+                      <path d="M2 12s3.7-7 10-7 10 7 10 7-3.7 7-10 7S2 12 2 12zm10 2.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+                    )}
+                  </svg>
+                </button>
+              </div>
               <button
                 type="submit"
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-sm"
+                className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-sm"
               >
                 Access
               </button>
@@ -1020,9 +1065,9 @@ export default function App() {
       <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40 backdrop-blur-md bg-opacity-90">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('landing')}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 to-yellow-400 p-0.5 shadow-md">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-forest-green to-tribal-green p-0.5 shadow-md">
               <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                <svg className="w-6 h-6 text-amber-400 fill-current" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-tribal-green fill-current" viewBox="0 0 24 24">
                   <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zm0 13.5L4.5 12.4 12 8.3l7.5 4.1L12 16.5zM12 19c-3.31 0-6 1.34-6 3h12c0-1.66-2.69-3-6-3z" />
                 </svg>
               </div>
@@ -1087,7 +1132,7 @@ export default function App() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {filteredSchemes.map((scheme) => (
-                <div key={scheme.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between shadow-xl">
+                <div key={scheme.id} data-reveal className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between shadow-xl">
                   <div className="space-y-3">
                     <span className="text-xs font-mono font-bold bg-amber-500/10 text-amber-400 px-2.5 py-1 rounded-lg">
                       {scheme.id}
@@ -1185,6 +1230,7 @@ export default function App() {
                     {applications.map((app) => (
                       <tr
                         key={app.id}
+                        data-reveal
                         onClick={() => setSelectedApplication(app)}
                         onKeyDown={(event) => {
                           if (event.key === 'Enter' || event.key === ' ') setSelectedApplication(app);
@@ -1237,6 +1283,7 @@ export default function App() {
                   key={app.id}
                   type="button"
                   onClick={() => setSelectedApplication(app)}
+                  data-reveal
                   className="block w-full text-left bg-slate-950 p-4 rounded-xl border border-slate-800 mb-4 hover:border-amber-400/50 focus:outline-none focus:border-amber-400"
                 >
                   <div className="font-bold text-amber-400">{app.id} - {app.schemeTitle}</div>
@@ -1315,7 +1362,7 @@ export default function App() {
             {calcResult && (
               <div className="mt-6 space-y-3">
                 {calcResult.map((res) => (
-                  <div key={res.id} className="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                  <div key={res.id} data-reveal className="p-3 bg-slate-950 rounded-xl border border-slate-800">
                     <div className="font-bold text-white">{res.title}</div>
                     <div className={`text-xs ${res.isEligible ? 'text-emerald-400' : 'text-rose-400'}`}>
                       {res.isEligible ? 'Eligible' : 'Not Eligible'}
