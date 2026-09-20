@@ -1166,6 +1166,21 @@ select:focus {
   padding-top: 1rem;
 }
 
+.toast-notification {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 100;
+  width: max-content;
+  max-width: min(28rem, calc(100vw - 2rem));
+  height: auto;
+  min-height: 2.75rem;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+
 button {
   transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
 }

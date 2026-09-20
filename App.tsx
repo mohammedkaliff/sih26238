@@ -1030,7 +1030,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 bg-amber-500 text-slate-950 px-4 py-3 rounded-xl font-bold shadow-2xl text-xs animate-bounce">
+        <div className="toast-notification fixed top-5 right-5 z-50 bg-amber-500 text-slate-950 px-4 py-3 rounded-xl font-bold shadow-2xl text-xs animate-bounce">
           {toastMessage}
         </div>
       )}
