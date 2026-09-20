@@ -16,6 +16,7 @@ type Scheme = {
   category: string;
   deadline: string;
   description: string;
+  requiredDocuments: string[];
   eligibility: EligibilityCriteria;
 };
 
@@ -264,6 +265,96 @@ function ApplicationDetailModal({
   );
 }
 
+function SchemeDetailModal({
+  scheme,
+  onClose
+}: {
+  scheme: Scheme;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  const criteria = [
+    ['Income limit', `${scheme.eligibility.minIncome !== undefined ? `₹${scheme.eligibility.minIncome.toLocaleString()} minimum` : ''}${scheme.eligibility.minIncome !== undefined && scheme.eligibility.maxIncome !== undefined ? ' - ' : ''}${scheme.eligibility.maxIncome !== undefined ? `₹${scheme.eligibility.maxIncome.toLocaleString()} maximum` : 'No limit specified'}`],
+    ['States', scheme.eligibility.eligibleStates.length > 0 ? scheme.eligibility.eligibleStates.join(', ') : 'All states'],
+    ['Caste / category', scheme.eligibility.eligibleCaste.length > 0 ? scheme.eligibility.eligibleCaste.join(', ') : 'All categories'],
+    ['Age range', `${scheme.eligibility.minAge ?? 'No minimum'} - ${scheme.eligibility.maxAge ?? 'No maximum'}`],
+    ['Gender', scheme.eligibility.eligibleGenders?.join(', ') || 'All genders'],
+    ['Occupation', scheme.eligibility.eligibleOccupations?.join(', ') || 'All occupations'],
+    ['Education', scheme.eligibility.eligibleEducationLevels?.join(', ') || 'All education levels']
+  ];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-slate-950/80 flex items-center justify-center p-4"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="scheme-detail-title"
+        className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-2xl"
+      >
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div>
+            <div className="text-xs font-mono font-bold text-amber-400">{scheme.id}</div>
+            <h2 id="scheme-detail-title" className="text-xl font-bold text-white mt-1">{scheme.title}</h2>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close scheme details" className="text-2xl leading-none text-slate-400 hover:text-white px-2">
+            ×
+          </button>
+        </div>
+
+        <div className="space-y-6 text-xs">
+          <div>
+            <h3 className="text-sm font-bold text-amber-400 mb-2">Overview</h3>
+            <p className="text-slate-300 leading-relaxed">{scheme.description}</p>
+            <p className="text-slate-400 mt-2">Ministry: <span className="text-white">{scheme.ministry}</span></p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="bg-slate-950 rounded-xl p-3"><span className="text-slate-400 block">Benefits / amount</span><strong className="text-emerald-400">{scheme.amount}</strong></div>
+            <div className="bg-slate-950 rounded-xl p-3"><span className="text-slate-400 block">Application deadline</span><strong className="text-white">{scheme.deadline || 'Not specified'}</strong></div>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-bold text-amber-400 mb-3">Eligibility criteria</h3>
+            <div className="space-y-2">
+              {criteria.map(([label, value]) => (
+                <div key={label} className="flex flex-col sm:flex-row sm:justify-between gap-1 border-b border-slate-800 pb-2">
+                  <span className="text-slate-400">{label}</span>
+                  <span className="text-white sm:text-right break-words sm:max-w-[75%]">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-bold text-amber-400 mb-3">Required documents</h3>
+            {scheme.requiredDocuments.length > 0 ? (
+              <ul className="list-disc list-inside text-slate-300 space-y-1">
+                {scheme.requiredDocuments.map((document) => <li key={document}>{document}</li>)}
+              </ul>
+            ) : (
+              <p className="text-slate-500">No documents specified.</p>
+            )}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 async function readJsonResponse(response: Response): Promise<Record<string, unknown>> {
   const responseText = await response.text();
   if (!responseText.trim()) {
@@ -403,6 +494,7 @@ export default function App() {
       category: 'Higher Edu / Abroad',
       deadline: '2026-10-31',
       description: 'Financial assistance to meritorious ST students for pursuing Master degree, Ph.D. and Post-Doctoral research abroad.',
+      requiredDocuments: ['Caste certificate', 'Admission offer letter', 'Income certificate', 'Academic transcripts'],
       eligibility: {
         eligibleStates: INDIAN_STATES,
         eligibleCaste: ['ST'],
@@ -422,6 +514,7 @@ export default function App() {
       category: 'Undergraduate',
       deadline: '2026-11-15',
       description: 'Full financial support for ST students pursuing studies in notified premier institutes like IITs, NITs, IIMs, and AIIMS.',
+      requiredDocuments: ['Caste certificate', 'Institute admission proof', 'Income certificate', 'Academic transcripts'],
       eligibility: {
         eligibleStates: INDIAN_STATES,
         eligibleCaste: ['ST'],
@@ -441,6 +534,7 @@ export default function App() {
       category: 'Pre-Matric',
       deadline: '2026-09-30',
       description: 'Support to tribal parents for educating their children studying in classes IX and X to reduce dropout rates.',
+      requiredDocuments: ['Caste certificate', 'School certificate', 'Income certificate', 'Bank details'],
       eligibility: {
         eligibleStates: ['Odisha', 'Jharkhand', 'Chhattisgarh'],
         eligibleCaste: ['ST'],
@@ -460,6 +554,7 @@ export default function App() {
       category: 'Post-Matric',
       deadline: '2026-12-15',
       description: 'Comprehensive financial support for post-matriculation or post-secondary courses in recognized institutions.',
+      requiredDocuments: ['Caste certificate', 'Bonafide certificate', 'Income certificate', 'Previous marksheet'],
       eligibility: {
         eligibleStates: INDIAN_STATES,
         eligibleCaste: ['ST'],
@@ -479,6 +574,7 @@ export default function App() {
       category: 'PhD / M.Phil',
       deadline: '2026-11-30',
       description: 'Fellowship assistance for ST students pursuing M.Phil and Ph.D. courses in Sciences, Humanities, and Social Sciences.',
+      requiredDocuments: ['Caste certificate', 'Research admission proof', 'Income certificate', 'Research proposal'],
       eligibility: {
         eligibleStates: INDIAN_STATES,
         eligibleCaste: ['ST'],
@@ -937,15 +1033,24 @@ export default function App() {
                     <p className="text-xs text-slate-400">{scheme.description}</p>
                     <div className="text-xs text-emerald-400 font-bold">Grant: {scheme.amount}</div>
                   </div>
-                  <button
-                    onClick={() => {
-                      setSelectedSchemeForApply(scheme);
-                      setIsApplyModalOpen(true);
-                    }}
-                    className="mt-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs"
-                  >
-                    Apply Now
-                  </button>
+                  <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSchemeForDetail(scheme)}
+                      className="flex-1 border border-slate-700 hover:border-amber-400 text-slate-200 hover:text-amber-400 font-bold py-2.5 rounded-xl text-xs"
+                    >
+                      View Details
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedSchemeForApply(scheme);
+                        setIsApplyModalOpen(true);
+                      }}
+                      className="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs"
+                    >
+                      Apply Now
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1158,6 +1263,13 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {selectedSchemeForDetail && (
+        <SchemeDetailModal
+          scheme={selectedSchemeForDetail}
+          onClose={() => setSelectedSchemeForDetail(null)}
+        />
+      )}
 
       {selectedApplication && (
         <ApplicationDetailModal
