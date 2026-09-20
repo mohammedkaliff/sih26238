@@ -13,11 +13,22 @@ type Scheme = {
   title: string;
   ministry: string;
   amount: string;
-  maxIncome: number;
   category: string;
-  minMarks: number;
   deadline: string;
   description: string;
+  eligibility: EligibilityCriteria;
+};
+
+type EligibilityCriteria = {
+  eligibleStates: string[];
+  eligibleCaste: string[];
+  minIncome?: number;
+  maxIncome?: number;
+  minAge?: number;
+  maxAge?: number;
+  eligibleGenders?: string[];
+  eligibleOccupations?: string[];
+  eligibleEducationLevels?: string[];
 };
 
 type ApplicationRecord = {
@@ -45,9 +56,12 @@ type AppFormData = {
 
 type CalcData = {
   income: string;
-  marks: string;
-  category: string;
-  courseLevel: string;
+  state: string;
+  caste: string;
+  gender: string;
+  occupation: string;
+  age: string;
+  education: string;
 };
 
 type EligibilityResult = Scheme & {
@@ -57,6 +71,56 @@ type EligibilityResult = Scheme & {
 };
 
 type AccessMode = 'PUBLIC' | 'RESTRICTED';
+
+const INDIAN_STATES = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+  'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
+];
+
+const CASTES = ['General', 'OBC', 'SC', 'ST', 'EWS'];
+const GENDERS = ['Male', 'Female', 'Other'];
+const OCCUPATIONS = ['Student', 'Farmer', 'Disabled', 'Senior Citizen', 'Minority', 'Entrepreneur'];
+const EDUCATION_LEVELS = ['School', 'Undergraduate', 'Postgraduate', 'M.Phil', 'Ph.D.'];
+
+function checkSchemeEligibility(scheme: Scheme, data: CalcData): { isEligible: boolean; reasons: string[] } {
+  const criteria = scheme.eligibility;
+  const income = Number(data.income);
+  const age = Number(data.age);
+  const reasons: string[] = [];
+
+  if (criteria.eligibleStates.length > 0 && !criteria.eligibleStates.includes(data.state)) {
+    reasons.push('Not applicable in your state');
+  }
+  if (criteria.eligibleCaste.length > 0 && !criteria.eligibleCaste.includes(data.caste)) {
+    reasons.push('Caste/category is not eligible');
+  }
+  if (criteria.minIncome !== undefined && income < criteria.minIncome) {
+    reasons.push(`Income below minimum (Min: ₹${criteria.minIncome.toLocaleString()})`);
+  }
+  if (criteria.maxIncome !== undefined && income > criteria.maxIncome) {
+    reasons.push(`Income exceeds limit (Max: ₹${criteria.maxIncome.toLocaleString()})`);
+  }
+  if (criteria.minAge !== undefined && age < criteria.minAge) {
+    reasons.push(`Age below minimum (Min: ${criteria.minAge})`);
+  }
+  if (criteria.maxAge !== undefined && age > criteria.maxAge) {
+    reasons.push(`Age above maximum (Max: ${criteria.maxAge})`);
+  }
+  if (criteria.eligibleGenders && !criteria.eligibleGenders.includes(data.gender)) {
+    reasons.push('Gender is not eligible for this scheme');
+  }
+  if (criteria.eligibleOccupations && !criteria.eligibleOccupations.includes(data.occupation)) {
+    reasons.push('Occupation/category is not eligible');
+  }
+  if (criteria.eligibleEducationLevels && !criteria.eligibleEducationLevels.includes(data.education)) {
+    reasons.push('Education level does not match');
+  }
+
+  return { isEligible: reasons.length === 0, reasons };
+}
 
 async function readJsonResponse(response: Response): Promise<Record<string, unknown>> {
   const responseText = await response.text();
@@ -109,9 +173,12 @@ export default function App() {
 
   const [calcData, setCalcData] = useState<CalcData>({
     income: '180000',
-    marks: '85',
-    category: 'PVTG (Particularly Vulnerable Tribal Group)',
-    courseLevel: 'Undergraduate'
+    state: 'Odisha',
+    caste: 'ST',
+    gender: 'Other',
+    occupation: 'Student',
+    age: '22',
+    education: 'Undergraduate'
   });
   const [calcResult, setCalcResult] = useState<EligibilityResult[] | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -190,55 +257,95 @@ export default function App() {
       title: 'National Overseas Scholarship for ST Students',
       ministry: 'Ministry of Tribal Affairs',
       amount: '₹20,00,000 / year',
-      maxIncome: 600000,
       category: 'Higher Edu / Abroad',
-      minMarks: 60,
       deadline: '2026-10-31',
-      description: 'Financial assistance to meritorious ST students for pursuing Master degree, Ph.D. and Post-Doctoral research abroad.'
+      description: 'Financial assistance to meritorious ST students for pursuing Master degree, Ph.D. and Post-Doctoral research abroad.',
+      eligibility: {
+        eligibleStates: INDIAN_STATES,
+        eligibleCaste: ['ST'],
+        maxIncome: 600000,
+        minAge: 21,
+        maxAge: 35,
+        eligibleGenders: GENDERS,
+        eligibleOccupations: ['Student'],
+        eligibleEducationLevels: ['Postgraduate', 'M.Phil', 'Ph.D.']
+      }
     },
     {
       id: 'SCH-002',
       title: 'Top Class Education Scheme for ST Students',
       ministry: 'Ministry of Tribal Affairs',
       amount: 'Full Tuition Fee + ₹86,000 allowance',
-      maxIncome: 800000,
       category: 'Undergraduate',
-      minMarks: 75,
       deadline: '2026-11-15',
-      description: 'Full financial support for ST students pursuing studies in notified premier institutes like IITs, NITs, IIMs, and AIIMS.'
+      description: 'Full financial support for ST students pursuing studies in notified premier institutes like IITs, NITs, IIMs, and AIIMS.',
+      eligibility: {
+        eligibleStates: INDIAN_STATES,
+        eligibleCaste: ['ST'],
+        maxIncome: 800000,
+        minAge: 17,
+        maxAge: 30,
+        eligibleGenders: GENDERS,
+        eligibleOccupations: ['Student'],
+        eligibleEducationLevels: ['Undergraduate']
+      }
     },
     {
       id: 'SCH-003',
       title: 'Pre-Matric Scholarship for ST Students (Class 9 & 10)',
       ministry: 'State & Central Joint Scheme',
       amount: '₹3,500 / year',
-      maxIncome: 250000,
       category: 'Pre-Matric',
-      minMarks: 50,
       deadline: '2026-09-30',
-      description: 'Support to tribal parents for educating their children studying in classes IX and X to reduce dropout rates.'
+      description: 'Support to tribal parents for educating their children studying in classes IX and X to reduce dropout rates.',
+      eligibility: {
+        eligibleStates: ['Odisha', 'Jharkhand', 'Chhattisgarh'],
+        eligibleCaste: ['ST'],
+        maxIncome: 250000,
+        minAge: 14,
+        maxAge: 18,
+        eligibleGenders: GENDERS,
+        eligibleOccupations: ['Student'],
+        eligibleEducationLevels: ['School']
+      }
     },
     {
       id: 'SCH-004',
       title: 'Post-Matric Scholarship for ST Students (PMS-ST)',
       ministry: 'Ministry of Tribal Affairs',
       amount: 'Up to ₹13,500 / year + Hosteller Allowance',
-      maxIncome: 250000,
       category: 'Post-Matric',
-      minMarks: 50,
       deadline: '2026-12-15',
-      description: 'Comprehensive financial support for post-matriculation or post-secondary courses in recognized institutions.'
+      description: 'Comprehensive financial support for post-matriculation or post-secondary courses in recognized institutions.',
+      eligibility: {
+        eligibleStates: INDIAN_STATES,
+        eligibleCaste: ['ST'],
+        maxIncome: 250000,
+        minAge: 16,
+        maxAge: 35,
+        eligibleGenders: GENDERS,
+        eligibleOccupations: ['Student'],
+        eligibleEducationLevels: ['Undergraduate', 'Postgraduate', 'M.Phil', 'Ph.D.']
+      }
     },
     {
       id: 'SCH-005',
       title: 'National Fellowship & Scholarship for Higher Education',
       ministry: 'Ministry of Tribal Affairs',
       amount: '₹31,000 / month + Contingency',
-      maxIncome: 600000,
       category: 'PhD / M.Phil',
-      minMarks: 55,
       deadline: '2026-11-30',
-      description: 'Fellowship assistance for ST students pursuing M.Phil and Ph.D. courses in Sciences, Humanities, and Social Sciences.'
+      description: 'Fellowship assistance for ST students pursuing M.Phil and Ph.D. courses in Sciences, Humanities, and Social Sciences.',
+      eligibility: {
+        eligibleStates: INDIAN_STATES,
+        eligibleCaste: ['ST'],
+        maxIncome: 600000,
+        minAge: 21,
+        maxAge: 45,
+        eligibleGenders: GENDERS,
+        eligibleOccupations: ['Student'],
+        eligibleEducationLevels: ['Postgraduate', 'M.Phil', 'Ph.D.']
+      }
     }
   ]);
 
@@ -321,21 +428,8 @@ export default function App() {
 
   const handleCalculateEligibility = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const incomeNum = Number.parseFloat(calcData.income) || 0;
-    const marksNum = Number.parseFloat(calcData.marks) || 0;
-
     const results: EligibilityResult[] = schemes.map((scheme) => {
-      const reasons: string[] = [];
-      let isEligible = true;
-
-      if (incomeNum > scheme.maxIncome) {
-        isEligible = false;
-        reasons.push(`Income exceeds limit (Max: ?${scheme.maxIncome.toLocaleString()})`);
-      }
-      if (marksNum < scheme.minMarks) {
-        isEligible = false;
-        reasons.push(`Marks below requirement (Min: ${scheme.minMarks}%)`);
-      }
+      const { isEligible, reasons } = checkSchemeEligibility(scheme, calcData);
 
       return {
         ...scheme,
@@ -771,10 +865,59 @@ export default function App() {
                 <label className="block text-slate-300 font-bold mb-1">Annual Income</label>
                 <input
                   type="number"
+                  min="0"
+                  required
                   value={calcData.income}
                   onChange={(event) => setCalcData({ ...calcData, income: event.target.value })}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
                 />
+              </div>
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">State</label>
+                <select required value={calcData.state} onChange={(event) => setCalcData({ ...calcData, state: event.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+                  <option value="">Select state</option>
+                  {INDIAN_STATES.map((state) => <option key={state} value={state}>{state}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Caste / Category</label>
+                <select required value={calcData.caste} onChange={(event) => setCalcData({ ...calcData, caste: event.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+                  <option value="">Select category</option>
+                  {CASTES.map((caste) => <option key={caste} value={caste}>{caste}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Gender</label>
+                <select required value={calcData.gender} onChange={(event) => setCalcData({ ...calcData, gender: event.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+                  <option value="">Select gender</option>
+                  {GENDERS.map((gender) => <option key={gender} value={gender}>{gender}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Occupation type</label>
+                <select required value={calcData.occupation} onChange={(event) => setCalcData({ ...calcData, occupation: event.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+                  <option value="">Select occupation</option>
+                  {OCCUPATIONS.map((occupation) => <option key={occupation} value={occupation}>{occupation}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Age</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="120"
+                  required
+                  value={calcData.age}
+                  onChange={(event) => setCalcData({ ...calcData, age: event.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Education level</label>
+                <select required value={calcData.education} onChange={(event) => setCalcData({ ...calcData, education: event.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+                  <option value="">Select education level</option>
+                  {EDUCATION_LEVELS.map((education) => <option key={education} value={education}>{education}</option>)}
+                </select>
               </div>
               <button type="submit" className="bg-amber-500 text-slate-950 font-bold px-4 py-2 rounded-xl">Calculate</button>
             </form>
@@ -786,6 +929,7 @@ export default function App() {
                     <div className={`text-xs ${res.isEligible ? 'text-emerald-400' : 'text-rose-400'}`}>
                       {res.isEligible ? 'Eligible' : 'Not Eligible'}
                     </div>
+                    {!res.isEligible && <div className="text-xs text-slate-400 mt-1">{res.reasons.join(' • ')}</div>}
                   </div>
                 ))}
               </div>
