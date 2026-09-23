@@ -737,10 +737,14 @@ export default function App() {
   };
 
   const filteredSchemes = useMemo<Scheme[]>(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
     return schemes.filter((scheme) => {
       const matchesSearch =
-        scheme.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        scheme.ministry.toLowerCase().includes(searchQuery.toLowerCase());
+        scheme.id.toLowerCase().includes(normalizedQuery) ||
+        scheme.title.toLowerCase().includes(normalizedQuery) ||
+        scheme.description.toLowerCase().includes(normalizedQuery) ||
+        scheme.ministry.toLowerCase().includes(normalizedQuery);
       const matchesCat = selectedCategory === 'All' || scheme.category === selectedCategory;
       return matchesSearch && matchesCat;
     });
