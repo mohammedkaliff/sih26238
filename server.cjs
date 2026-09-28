@@ -157,7 +157,7 @@ async function handleRequest(request, response) {
       const password = String(body.password || '');
 
       if (!getAdminEmails().includes(email) || !safeEqual(password, getAdminPassword())) {
-        return sendJson(response, 401, { message: 'Invalid administrator credentials.' });
+        return sendJson(response, 401, { message: 'Invalid credentials' });
       }
 
       const token = createSessionToken(email);

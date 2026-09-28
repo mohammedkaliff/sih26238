@@ -384,14 +384,14 @@ async function readJsonResponse(response: Response): Promise<Record<string, unkn
   }
 }
 
-const ALLOWED_ADMIN_EMAILS = ['mohammedkaliff10@gmail.com'];
-
-const PRESET_ACCOUNTS: Account[] = [
-  { id: '1', name: 'Kaliff', email: 'mohammedkaliff10@gmail.com', role: 'Super Administrator', avatar: 'K' }
-];
-
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<Account>(PRESET_ACCOUNTS[0]);
+  const [currentUser, setCurrentUser] = useState<Account>({
+    id: 'administrator',
+    name: 'Administrator',
+    email: '',
+    role: 'Administrator',
+    avatar: 'A'
+  });
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [customEmailInput, setCustomEmailInput] = useState<string>('');
   const [loginPassword, setLoginPassword] = useState<string>('');
@@ -409,7 +409,7 @@ export default function App() {
   const [selectedApplication, setSelectedApplication] = useState<ApplicationRecord | null>(null);
   const [appStep, setAppStep] = useState<number>(1);
   const [appFormData, setAppFormData] = useState<AppFormData>({
-    fullName: 'Kaliff',
+    fullName: 'Applicant',
     tribeName: 'Santhal',
     casteCertNo: 'ST-OD-2026-9901',
     instituteName: 'National Institute of Technology',
@@ -497,13 +497,12 @@ export default function App() {
             if (!sessionUser?.email || !sessionUser.role) {
               throw new Error('The authentication session response is invalid.');
             }
-            const matched = PRESET_ACCOUNTS.find((account) => account.email === sessionUser.email);
-            setCurrentUser(matched || {
-              id: sessionUser.email,
-              name: sessionUser.email.split('@')[0],
+            setCurrentUser({
+              id: 'administrator',
+              name: 'Administrator',
               email: sessionUser.email,
               role: sessionUser.role,
-              avatar: sessionUser.email.charAt(0).toUpperCase()
+              avatar: 'A'
             });
             setIsLoggedIn(true);
           }
@@ -635,10 +634,10 @@ export default function App() {
   const [applications, setApplications] = useState<ApplicationRecord[]>([
     {
       id: 'APP-2026-9041',
-      applicantName: 'Kaliff',
-      applicantEmail: 'mohammedkaliff10@gmail.com',
+      applicantName: 'Applicant',
+      applicantEmail: 'applicant@example.com',
       personalInfo: {
-        fullName: 'Kaliff',
+        fullName: 'Applicant',
         tribeName: 'Santhal',
         casteCertNo: 'ST-OD-2026-9901',
         instituteName: 'National Institute of Technology',
@@ -714,25 +713,27 @@ export default function App() {
           throw new Error(typeof data.message === 'string' ? data.message : 'Unable to sign in.');
         }
 
-        const matched = PRESET_ACCOUNTS.find((account) => account.email === cleanEmail);
-        const nameFromEmail = cleanEmail.split('@')[0];
-        const nameFormatted = nameFromEmail.charAt(0).toUpperCase() + nameFromEmail.slice(1);
-        setCurrentUser(matched || {
-          id: Date.now().toString(),
-          name: nameFormatted,
-          email: cleanEmail,
-          role: 'Administrator',
-          avatar: nameFormatted.charAt(0)
+        const user = data.user as { email?: string; role?: string } | undefined;
+        if (!user?.email || !user.role) {
+          throw new Error('Invalid credentials');
+        }
+        setCurrentUser({
+          id: 'administrator',
+          name: 'Administrator',
+          email: user.email,
+          role: user.role,
+          avatar: 'A'
         });
         setIsLoggedIn(true);
         setForceLogin(false);
+        setCustomEmailInput('');
         setLoginPassword('');
         setAuthError('');
-        showToast(`Welcome back, ${nameFormatted}!`);
+        showToast('Administrator signed in.');
       })
-      .catch((error: unknown) => {
+      .catch(() => {
         setIsLoggedIn(false);
-        setAuthError(error instanceof Error ? error.message : 'Unable to sign in.');
+        setAuthError('Invalid credentials');
       });
   };
 
@@ -874,11 +875,7 @@ export default function App() {
     try {
       const response = await fetch('/api/access-setting', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-email': currentUser.email,
-          'x-admin-role': currentUser.role || 'Administrator'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accessMode: nextMode })
       });
 
@@ -942,50 +939,9 @@ export default function App() {
             </div>
           )}
 
-          <div className="space-y-3 mb-6">
+          <form onSubmit={handleCustomLogin} className="space-y-3">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Select Authorized Identity:
-            </label>
-            {PRESET_ACCOUNTS.map((account) => {
-              const isAllowed = ALLOWED_ADMIN_EMAILS.includes(account.email);
-              return (
-                <button
-                  key={account.id}
-                  onClick={() => {
-                    setCurrentUser(account);
-                    setCustomEmailInput(account.email);
-                    setAuthError(isAllowed ? '' : `Access Denied: ${account.email} is not an administrator.`);
-                  }}
-                  className={`w-full flex items-center justify-between p-3.5 rounded-xl border transition-all text-left ${
-                    currentUser.email === account.email
-                      ? 'border-amber-500 bg-amber-500/10 text-white'
-                      : 'border-slate-800 bg-slate-800/40 hover:bg-slate-800 text-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-9 h-9 rounded-full bg-amber-500/20 border border-amber-400/40 font-bold text-amber-400 flex items-center justify-center text-sm">
-                      {account.avatar}
-                    </div>
-                    <div>
-                      <div className="font-semibold text-sm flex items-center space-x-2">
-                        <span>{account.name}</span>
-                        {isAllowed && (
-                          <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded">
-                            Authorized
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs text-slate-400">{account.email}</div>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          <form onSubmit={handleCustomLogin} className="space-y-3 pt-4 border-t border-slate-800">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Verify Custom Email:
+              Administrator email:
             </label>
             <div className="space-y-3">
               <input
@@ -1061,6 +1017,7 @@ export default function App() {
             } finally {
               setIsLoggedIn(false);
               setForceLogin(true);
+              setCustomEmailInput('');
             }
           }}
           className="text-slate-400 hover:text-amber-400 transition-colors underline"
@@ -1178,7 +1135,7 @@ export default function App() {
           <div className="space-y-6">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <h2 className="text-xl font-extrabold text-white">Admin Approval Desk ({currentUser.name})</h2>
+                <h2 className="text-xl font-extrabold text-white">Admin Approval Desk</h2>
                 <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2">
                   <span className="text-[10px] uppercase tracking-wider text-slate-400">Current State</span>
                   <span className={`text-sm font-bold ${accessMode === 'PUBLIC' ? 'text-emerald-400' : 'text-amber-400'}`}>
