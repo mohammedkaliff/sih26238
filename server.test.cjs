@@ -1,8 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 
 process.env.ADMIN_EMAILS = 'admin@example.com';
 process.env.ADMIN_PASSWORD = 'test-password';
+const accessSettingDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'sih26238-access-setting-'));
+process.env.ACCESS_SETTING_FILE = path.join(accessSettingDirectory, 'access-setting.json');
 
 const { createServer, writeAccessSetting } = require('./server.cjs');
 
@@ -19,6 +24,7 @@ test.before(async () => {
 test.after(async () => {
   writeAccessSetting('RESTRICTED');
   await new Promise((resolve) => server.close(resolve));
+  fs.rmSync(accessSettingDirectory, { recursive: true, force: true });
 });
 
 test('non-admin callers cannot change the access setting', async () => {
@@ -78,6 +84,7 @@ test('authenticated administrators can persist the access setting', async () => 
 
   assert.equal(updateResponse.status, 200);
   assert.deepEqual(await updateResponse.json(), { accessMode: 'PUBLIC' });
+  assert.deepEqual(JSON.parse(fs.readFileSync(process.env.ACCESS_SETTING_FILE, 'utf8')), { accessMode: 'PUBLIC' });
 
   const adminAccessResponse = await fetch(`${baseUrl}/api/application-access`, {
     headers: { Cookie: cookie }

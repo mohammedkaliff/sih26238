@@ -888,13 +888,16 @@ export default function App() {
         throw new Error(typeof data.message === 'string' ? data.message : 'Unable to update access setting.');
       }
 
-      setAccessMode(nextMode);
-      showToast(`Access updated to ${nextMode === 'PUBLIC' ? 'Public' : 'Restricted'} mode.`);
+      if (data.accessMode !== 'PUBLIC' && data.accessMode !== 'RESTRICTED') {
+        throw new Error('The server returned an invalid access setting.');
+      }
+
+      setAccessMode(data.accessMode);
+      showToast(`Access updated to ${data.accessMode === 'PUBLIC' ? 'Public' : 'Restricted'} mode.`);
     } catch (error) {
       setAccessSettingError(
         error instanceof Error ? error.message : 'Unable to update access setting.'
       );
-      setAccessMode(accessMode);
     } finally {
       setAccessSettingSaving(false);
     }

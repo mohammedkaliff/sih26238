@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT_DIR = __dirname;
-let accessSetting = 'RESTRICTED';
+const ACCESS_SETTING_FILE = process.env.ACCESS_SETTING_FILE || path.join(ROOT_DIR, 'data', 'access-setting.json');
 
 function loadEnvFile() {
   const envFile = path.join(ROOT_DIR, '.env');
@@ -55,11 +55,18 @@ function createSessionToken(email) {
 }
 
 function readAccessSetting() {
-  return accessSetting;
+  try {
+    const setting = JSON.parse(fs.readFileSync(ACCESS_SETTING_FILE, 'utf8')).accessMode;
+    return setting === 'PUBLIC' ? 'PUBLIC' : 'RESTRICTED';
+  } catch {
+    return 'RESTRICTED';
+  }
 }
 
 function writeAccessSetting(accessMode) {
-  accessSetting = accessMode === 'PUBLIC' ? 'PUBLIC' : 'RESTRICTED';
+  const setting = accessMode === 'PUBLIC' ? 'PUBLIC' : 'RESTRICTED';
+  fs.mkdirSync(path.dirname(ACCESS_SETTING_FILE), { recursive: true });
+  fs.writeFileSync(ACCESS_SETTING_FILE, `${JSON.stringify({ accessMode: setting }, null, 2)}\n`, 'utf8');
 }
 
 function parseCookies(request) {
