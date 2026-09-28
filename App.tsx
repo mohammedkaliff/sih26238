@@ -280,6 +280,29 @@ function ApplicationDetailModal({
   );
 }
 
+function SchemeDetailIcon({ name }: { name: string }) {
+  const icons: Record<string, React.ReactNode> = {
+    info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5m0-8h.01" /></>,
+    benefit: <><ellipse cx="12" cy="6" rx="8" ry="3" /><path d="M4 6v5c0 1.7 3.6 3 8 3 1.5 0 2.9-.2 4-.5M4 11v5c0 1.7 3.6 3 8 3 1.2 0 2.4-.1 3.4-.4M20 9v6m-3-3h6" /></>,
+    deadline: <><rect x="3.5" y="5" width="17" height="16" rx="2" /><path d="M7 3v4m10-4v4M4 10h16m-11 4h2m3 0h2m-7 3h2" /></>,
+    eligibility: <><circle cx="12" cy="12" r="9" /><path d="m8 12 2.5 2.5L16.5 9" /></>,
+    location: <><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></>,
+    category: <><path d="M20 13 13 20 4 11V4h7l9 9Z" /><circle cx="8" cy="8" r="1" /></>,
+    age: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
+    people: <><circle cx="9" cy="8" r="3" /><path d="M3.5 20v-1a5.5 5.5 0 0 1 11 0v1m1-10a3 3 0 1 0 0-6m1 9a5 5 0 0 1 4 5v1" /></>,
+    work: <><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5h8v2m-13 5h18m-11 0v2h4v-2" /></>,
+    education: <><path d="m3 8 9-5 9 5-9 5-9-5Zm3 2v6c3.5 3 8.5 3 12 0v-6m3-2v7" /></>,
+    document: <><path d="M7 3h7l5 5v13H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" /><path d="M14 3v6h5m-9 4h5m-5 4h5" /></>,
+    ministry: <><path d="m3 9 9-6 9 6M5 10v8m4-8v8m6-8v8m4-8v8M3 21h18M2 18h20" /></>
+  };
+
+  return (
+    <svg className="scheme-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {icons[name] || icons.info}
+    </svg>
+  );
+}
+
 function SchemeDetailModal({
   scheme,
   onClose
@@ -305,6 +328,15 @@ function SchemeDetailModal({
     ['Occupation', scheme.eligibility.eligibleOccupations?.join(', ') || 'All occupations'],
     ['Education', scheme.eligibility.eligibleEducationLevels?.join(', ') || 'All education levels']
   ];
+  const criteriaIcons: Record<string, string> = {
+    'Income limit': 'benefit',
+    States: 'location',
+    'Caste / category': 'category',
+    'Age range': 'age',
+    Gender: 'people',
+    Occupation: 'work',
+    Education: 'education'
+  };
 
   return (
     <div
@@ -324,46 +356,53 @@ function SchemeDetailModal({
           <div>
             <div className="scheme-reference text-xs font-mono font-bold text-amber-400">{scheme.id}</div>
             <h2 id="scheme-detail-title" className="text-xl font-bold text-white mt-1">{scheme.title}</h2>
+            <span className="scheme-category-badge"><SchemeDetailIcon name="category" />{scheme.category}</span>
           </div>
           <button type="button" onClick={onClose} aria-label="Close scheme details" className="text-2xl leading-none text-slate-400 hover:text-white px-2">
             ×
           </button>
         </div>
 
-        <div className="space-y-6 text-xs">
-          <div>
-            <h3 className="text-sm font-bold text-amber-400 mb-2">Overview</h3>
-            <p className="text-slate-300 leading-relaxed">{scheme.description}</p>
-            <p className="text-slate-400 mt-2">Ministry: <span className="text-white">{scheme.ministry}</span></p>
-          </div>
+        <div className="scheme-detail-body text-xs">
+          <section className="scheme-detail-overview">
+            <h3 className="scheme-detail-section-title"><span className="scheme-detail-icon-wrap"><SchemeDetailIcon name="info" /></span>Overview</h3>
+            <p className="scheme-detail-description">{scheme.description}</p>
+            <div className="scheme-ministry"><span className="scheme-detail-icon-wrap"><SchemeDetailIcon name="ministry" /></span><span><span className="scheme-detail-label">Ministry</span><strong>{scheme.ministry}</strong></span></div>
+          </section>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="bg-slate-950 rounded-xl p-3"><span className="text-slate-400 block">Benefits / amount</span><strong className="text-emerald-400">{scheme.amount}</strong></div>
-            <div className="bg-slate-950 rounded-xl p-3"><span className="text-slate-400 block">Application deadline</span><strong className="text-white">{scheme.deadline || 'Not specified'}</strong></div>
-          </div>
-
-          <div>
-            <h3 className="text-sm font-bold text-amber-400 mb-3">Eligibility criteria</h3>
-            <div className="space-y-2">
-              {criteria.map(([label, value]) => (
-                <div key={label} className="flex flex-col sm:flex-row sm:justify-between gap-1 border-b border-slate-800 pb-2">
-                  <span className="text-slate-400">{label}</span>
-                  <span className="text-white sm:text-right break-words sm:max-w-[75%]">{value}</span>
-                </div>
-              ))}
+          <div className="scheme-highlight-grid">
+            <div className="scheme-highlight-card scheme-benefit-card">
+              <span className="scheme-detail-icon-wrap"><SchemeDetailIcon name="benefit" /></span>
+              <span className="scheme-highlight-copy"><span className="scheme-detail-label">Benefits / amount</span><strong>{scheme.amount}</strong></span>
+            </div>
+            <div className="scheme-highlight-card scheme-deadline-card">
+              <span className="scheme-detail-icon-wrap"><SchemeDetailIcon name="deadline" /></span>
+              <span className="scheme-highlight-copy"><span className="scheme-detail-label">Application deadline</span><strong>{scheme.deadline || 'Not specified'}</strong></span>
             </div>
           </div>
 
-          <div>
-            <h3 className="text-sm font-bold text-amber-400 mb-3">Required documents</h3>
+          <section className="scheme-detail-section">
+            <h3 className="scheme-detail-section-title"><span className="scheme-detail-icon-wrap"><SchemeDetailIcon name="eligibility" /></span>Eligibility criteria</h3>
+            <div className="scheme-criteria-grid">
+              {criteria.map(([label, value]) => (
+                <div key={label} className="scheme-criteria-card">
+                  <span className="scheme-detail-icon-wrap"><SchemeDetailIcon name={criteriaIcons[label] || 'info'} /></span>
+                  <span className="scheme-criteria-copy"><span className="scheme-detail-label">{label}</span><strong>{value}</strong></span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="scheme-detail-section">
+            <h3 className="scheme-detail-section-title"><span className="scheme-detail-icon-wrap"><SchemeDetailIcon name="document" /></span>Required documents</h3>
             {scheme.requiredDocuments.length > 0 ? (
-              <ul className="list-disc list-inside text-slate-300 space-y-1">
-                {scheme.requiredDocuments.map((document) => <li key={document}>{document}</li>)}
+              <ul className="scheme-documents-list">
+                {scheme.requiredDocuments.map((document) => <li key={document}><span className="scheme-detail-icon-wrap"><SchemeDetailIcon name="document" /></span><span>{document}</span></li>)}
               </ul>
             ) : (
-              <p className="text-slate-500">No documents specified.</p>
+              <p className="scheme-empty-documents">No documents specified.</p>
             )}
-          </div>
+          </section>
         </div>
       </section>
     </div>
