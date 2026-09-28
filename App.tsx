@@ -146,6 +146,38 @@ function checkSchemeEligibility(scheme: Scheme, data: CalcData): { isEligible: b
   return { isEligible: reasons.length === 0, reasons };
 }
 
+function ApplicationDetailIcon({ name }: { name: string }) {
+  const icons: Record<string, React.ReactNode> = {
+    user: <><circle cx="12" cy="8" r="4" /><path d="M4 21v-2a8 8 0 0 1 16 0v2" /></>,
+    mail: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></>,
+    tribe: <><circle cx="9" cy="8" r="3" /><path d="M3.5 20v-1a5.5 5.5 0 0 1 11 0v1m1-10a3 3 0 1 0 0-6m1 9a5 5 0 0 1 4 5v1" /></>,
+    certificate: <><path d="M7 3h7l5 5v13H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" /><path d="M14 3v6h5m-9 4h5m-5 4h3m3 0 1 2 2-1 2 1 1-2" /></>,
+    institution: <><path d="m3 9 9-6 9 6M5 10v8m4-8v8m6-8v8m4-8v8M3 21h18M2 18h20" /></>,
+    course: <><path d="m3 8 9-5 9 5-9 5-9-5Zm3 2v6c3.5 3 8.5 3 12 0v-6m3-2v7" /></>,
+    bank: <><rect x="3" y="6" width="18" height="14" rx="2" /><path d="M3 10h18m-13 5h4m-9-9 9-3 9 3" /></>,
+    code: <><path d="m8 8-4 4 4 4m8-8 4 4-4 4m-3-7-2 6" /></>,
+    income: <><ellipse cx="12" cy="6" rx="8" ry="3" /><path d="M4 6v5c0 1.7 3.6 3 8 3m-8-3v5c0 1.7 3.6 3 8 3m8-10v5m-3-3h6" /></>,
+    location: <><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></>,
+    category: <><path d="M20 13 13 20 4 11V4h7l9 9Z" /><circle cx="8" cy="8" r="1" /></>,
+    gender: <><circle cx="12" cy="12" r="8" /><path d="M12 4v16m-8-8h16" /></>,
+    work: <><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5h8v2m-13 5h18m-11 0v2h4v-2" /></>,
+    age: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
+    education: <><path d="m3 8 9-5 9 5-9 5-9-5Zm3 2v6c3.5 3 8.5 3 12 0v-6m3-2v7" /></>,
+    scheme: <><path d="M3 20h18M5 20V8l7-4 7 4v12M9 20v-7h6v7m-7-9h.01M16 11h.01" /></>,
+    status: <><circle cx="12" cy="12" r="9" /><path d="m8 12 2.5 2.5L16.5 9" /></>,
+    stage: <><path d="M4 19V5m0 14h16M8 15l3-4 3 2 5-7" /></>,
+    amount: <><ellipse cx="12" cy="6" rx="8" ry="3" /><path d="M4 6v5c0 1.7 3.6 3 8 3m-8-3v5c0 1.7 3.6 3 8 3m3-8h5m-2.5-2.5L12 13l2.5 2.5" /></>,
+    calendar: <><rect x="3.5" y="5" width="17" height="16" rx="2" /><path d="M7 3v4m10-4v4M4 10h16m-11 4h2m3 0h2" /></>,
+    document: <><path d="M7 3h7l5 5v13H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" /><path d="M14 3v6h5m-9 4h5m-5 4h5" /></>
+  };
+
+  return (
+    <svg className="application-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {icons[name] || icons.user}
+    </svg>
+  );
+}
+
 function ApplicationDetailModal({
   application,
   onClose
@@ -182,6 +214,25 @@ function ApplicationDetailModal({
     ['Age', application.eligibilityInputs.age],
     ['Education', application.eligibilityInputs.education]
   ];
+  const personalIcons: Record<string, string> = {
+    'Full name': 'user',
+    Email: 'mail',
+    'Tribe name': 'tribe',
+    'Caste certificate': 'certificate',
+    Institute: 'institution',
+    Course: 'course',
+    'Bank account': 'bank',
+    'IFSC code': 'code'
+  };
+  const eligibilityIcons: Record<string, string> = {
+    'Annual income': 'income',
+    State: 'location',
+    'Caste / category': 'category',
+    Gender: 'gender',
+    Occupation: 'work',
+    Age: 'age',
+    Education: 'education'
+  };
 
   return (
     <div
@@ -197,8 +248,9 @@ function ApplicationDetailModal({
         aria-labelledby="application-detail-title"
         className="application-detail-modal bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-3xl p-5 sm:p-6 shadow-2xl"
       >
-        <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="application-detail-header flex items-start justify-between gap-4 mb-6">
           <div>
+            <span className="application-detail-eyebrow">Application record</span>
             <h2 id="application-detail-title" className="text-xl font-bold text-white mt-1">Application details</h2>
           </div>
           <button
@@ -211,69 +263,75 @@ function ApplicationDetailModal({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-          <div>
-            <h3 className="text-sm font-bold text-amber-400 mb-3">Applicant information</h3>
-            <div className="space-y-2">
+        <div className="application-detail-body">
+          <div className="application-detail-columns">
+            <section className="application-detail-section">
+              <h3 className="application-detail-section-title"><span className="application-detail-icon-wrap"><ApplicationDetailIcon name="user" /></span>Applicant information</h3>
+              <div className="application-detail-fields">
               {personalFields.map(([label, value]) => (
-                <div key={label} className="flex flex-col sm:flex-row sm:justify-between gap-1 border-b border-slate-800 pb-2">
-                  <span className="text-sm font-bold text-slate-300">{label}</span>
-                  <span className="text-white sm:text-right break-words">{value}</span>
+                <div key={label} className="application-detail-field">
+                  <span className="application-detail-icon-wrap"><ApplicationDetailIcon name={personalIcons[label] || 'user'} /></span>
+                  <span className="application-detail-field-copy"><span className="application-detail-label">{label}</span><strong>{value}</strong></span>
                 </div>
               ))}
-            </div>
-          </div>
+              </div>
+            </section>
 
-          <div>
-            <h3 className="text-sm font-bold text-amber-400 mb-3">Submitted eligibility inputs</h3>
-            <div className="space-y-2">
+            <section className="application-detail-section application-eligibility-section">
+              <h3 className="application-detail-section-title"><span className="application-detail-icon-wrap"><ApplicationDetailIcon name="status" /></span>Submitted eligibility inputs</h3>
+              <div className="application-detail-fields">
               {eligibilityFields.map(([label, value]) => (
-                <div key={label} className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3 border-b border-slate-800 pb-2">
-                  <span className="text-sm font-bold text-slate-300">{label}</span>
-                  <span className="text-white">{value}</span>
+                <div key={label} className="application-detail-field">
+                  <span className="application-detail-icon-wrap"><ApplicationDetailIcon name={eligibilityIcons[label] || 'status'} /></span>
+                  <span className="application-detail-field-copy"><span className="application-detail-label">{label}</span><strong>{value}</strong></span>
                 </div>
               ))}
-            </div>
+              </div>
+            </section>
           </div>
-        </div>
 
-        <div className="mt-6 border-t border-slate-800 pt-5 space-y-3 text-xs">
-          <h3 className="text-sm font-bold text-amber-400">Scheme</h3>
-          <div className="font-bold text-white">{application.schemeTitle}</div>
-          <div className="text-slate-400">Scheme ID: <span className="text-white">{application.schemeId}</span></div>
-          <p className="text-slate-400 leading-relaxed">{application.schemeDescription}</p>
-        </div>
+          <section className="application-detail-section application-scheme-section">
+            <h3 className="application-detail-section-title"><span className="application-detail-icon-wrap"><ApplicationDetailIcon name="scheme" /></span>Scheme</h3>
+            <strong className="application-scheme-title">{application.schemeTitle}</strong>
+            <p className="application-scheme-id">Scheme ID: <span>{application.schemeId}</span></p>
+            <p className="application-scheme-description">{application.schemeDescription}</p>
+          </section>
 
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          <div className="bg-slate-950 rounded-xl p-3"><span className="text-slate-400 block">Status</span><strong className="text-white">{application.status}</strong></div>
-          <div className="bg-slate-950 rounded-xl p-3"><span className="text-slate-400 block">Stage</span><strong className="text-white">{application.stage} / 4</strong></div>
-          <div className="bg-slate-950 rounded-xl p-3"><span className="text-slate-400 block">Amount</span><strong className="text-white">{application.amount}</strong></div>
-        </div>
+          <div className="application-summary-grid">
+            <div className="application-summary-card application-status-card"><span className="application-detail-icon-wrap"><ApplicationDetailIcon name="status" /></span><span><span className="application-detail-label">Status</span><strong>{application.status}</strong></span></div>
+            <div className="application-summary-card"><span className="application-detail-icon-wrap"><ApplicationDetailIcon name="stage" /></span><span><span className="application-detail-label">Stage</span><strong>{application.stage} / 4</strong></span></div>
+            <div className="application-summary-card application-amount-card"><span className="application-detail-icon-wrap"><ApplicationDetailIcon name="amount" /></span><span><span className="application-detail-label">Amount</span><strong>{application.amount}</strong></span></div>
+          </div>
 
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-400">
-          <div>Application date: <span className="text-white">{application.appliedDate}</span></div>
-          <div>Submitted: <span className="text-white">{formatTimestamp(application.submittedAt)}</span></div>
-          <div>Last updated: <span className="text-white">{formatTimestamp(application.lastUpdated)}</span></div>
-        </div>
-
-        <div className="mt-6 border-t border-slate-800 pt-5">
-          <h3 className="text-sm font-bold text-amber-400 mb-3">Documents</h3>
-          {application.documents.length > 0 ? (
-            <div className="space-y-2 text-xs">
-              {application.documents.map((document) => (
-                <div key={`${document.documentType || 'document'}-${document.name}`} className="flex items-center gap-3">
-                  {document.type?.startsWith('image/') && (
-                    <img src={document.url} alt={document.documentType || document.name} className="h-12 w-12 rounded object-cover border border-slate-700" />
-                  )}
-                  <a href={document.url} target="_blank" rel="noreferrer" className="text-sky-400 hover:text-sky-300 underline break-all">
-                    {document.documentType ? `${document.documentType}: ` : ''}{document.name}{document.type ? ` (${document.type})` : ''}
-                  </a>
-                </div>
-              ))}
+          <section className="application-detail-section application-timeline-section">
+            <h3 className="application-detail-section-title"><span className="application-detail-icon-wrap"><ApplicationDetailIcon name="calendar" /></span>Application timeline</h3>
+            <div className="application-timeline-grid">
+              <div><span className="application-detail-label">Application date</span><strong>{application.appliedDate}</strong></div>
+              <div><span className="application-detail-label">Submitted</span><strong>{formatTimestamp(application.submittedAt)}</strong></div>
+              <div><span className="application-detail-label">Last updated</span><strong>{formatTimestamp(application.lastUpdated)}</strong></div>
             </div>
-          ) : (
-            <p className="text-xs text-slate-500">No documents uploaded.</p>
-          )}
+          </section>
+
+          <section className="application-detail-section application-documents-section">
+            <h3 className="application-detail-section-title"><span className="application-detail-icon-wrap"><ApplicationDetailIcon name="document" /></span>Documents</h3>
+            {application.documents.length > 0 ? (
+              <div className="application-documents-grid">
+                {application.documents.map((document) => (
+                  <div key={`${document.documentType || 'document'}-${document.name}`} className="application-document-card">
+                    {document.type?.startsWith('image/') && (
+                      <img src={document.url} alt={document.documentType || document.name} className="application-document-preview" />
+                    )}
+                    <span className="application-detail-icon-wrap"><ApplicationDetailIcon name="document" /></span>
+                    <a href={document.url} target="_blank" rel="noreferrer" className="application-document-link">
+                      {document.documentType ? `${document.documentType}: ` : ''}{document.name}{document.type ? ` (${document.type})` : ''}
+                    </a>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="application-empty-documents">No documents uploaded.</p>
+            )}
+          </section>
         </div>
       </section>
     </div>
