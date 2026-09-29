@@ -1004,7 +1004,7 @@ export default function App() {
     setActiveTab('landing');
   };
 
-  const showAdminPortal = false;
+  const showAdminPortal = isLoggedIn && isAuthorizedUser;
   const isAccessAllowed = accessMode === 'PUBLIC' || showAdminPortal;
 
   if ((accessMode === 'RESTRICTED' && !showAdminPortal) || forceLogin) {
@@ -1167,7 +1167,7 @@ export default function App() {
             </button>
             {showAdminPortal && (
               <button
-                onClick={() => setActiveTab('landing')}
+                onClick={() => setActiveTab('admin')}
                 className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all flex items-center space-x-1.5 ${
                   activeTab === 'admin' ? 'bg-amber-500/20 text-amber-300 border border-amber-400/50' : 'text-amber-400'
                 }`}
