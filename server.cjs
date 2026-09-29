@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const ROOT_DIR = __dirname;
 const ACCESS_SETTING_FILE = process.env.ACCESS_SETTING_FILE || path.join(ROOT_DIR, 'data', 'access-setting.json');
+const ACCESS_SETTING_KV_KEY = 'sih26238:access-mode';
 
 function loadEnvFile() {
   const envFile = path.join(ROOT_DIR, '.env');
@@ -54,7 +55,51 @@ function createSessionToken(email) {
   return `${payload}.${signature}`;
 }
 
-function readAccessSetting() {
+function getAccessSettingStore() {
+  const url = process.env.KV_REST_API_URL;
+  const token = process.env.KV_REST_API_TOKEN;
+
+  if (url && token) return { url: url.replace(/\/$/, ''), token };
+  if (url || token) {
+    const error = new Error('Both KV_REST_API_URL and KV_REST_API_TOKEN must be configured.');
+    error.statusCode = 503;
+    throw error;
+  }
+  return undefined;
+}
+
+async function requestAccessSettingStore(store, command) {
+  let response;
+  try {
+    response = await fetch(store.url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${store.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(command)
+    });
+  } catch {
+    const error = new Error('Unable to reach the persistent access-setting store.');
+    error.statusCode = 502;
+    throw error;
+  }
+
+  let result;
+  try {
+    result = await response.json();
+  } catch {
+    result = undefined;
+  }
+  if (!response.ok || result?.error) {
+    const error = new Error('The persistent access-setting store rejected the request.');
+    error.statusCode = 502;
+    throw error;
+  }
+  return result?.result;
+}
+
+function readLocalAccessSetting() {
   try {
     const setting = JSON.parse(fs.readFileSync(ACCESS_SETTING_FILE, 'utf8')).accessMode;
     return setting === 'PUBLIC' ? 'PUBLIC' : 'RESTRICTED';
@@ -63,8 +108,27 @@ function readAccessSetting() {
   }
 }
 
-function writeAccessSetting(accessMode) {
+async function readAccessSetting() {
+  const store = getAccessSettingStore();
+  if (!store) return readLocalAccessSetting();
+
+  const setting = await requestAccessSettingStore(store, ['GET', ACCESS_SETTING_KV_KEY]);
+  return setting === 'PUBLIC' ? 'PUBLIC' : setting === 'RESTRICTED' ? 'RESTRICTED' : readLocalAccessSetting();
+}
+
+async function writeAccessSetting(accessMode) {
   const setting = accessMode === 'PUBLIC' ? 'PUBLIC' : 'RESTRICTED';
+  const store = getAccessSettingStore();
+  if (store) {
+    await requestAccessSettingStore(store, ['SET', ACCESS_SETTING_KV_KEY, setting]);
+    return;
+  }
+  if (process.env.VERCEL === '1') {
+    const error = new Error('Configure KV_REST_API_URL and KV_REST_API_TOKEN to persist access settings on Vercel.');
+    error.statusCode = 503;
+    throw error;
+  }
+
   fs.mkdirSync(path.dirname(ACCESS_SETTING_FILE), { recursive: true });
   fs.writeFileSync(ACCESS_SETTING_FILE, `${JSON.stringify({ accessMode: setting }, null, 2)}\n`, 'utf8');
 }
@@ -138,13 +202,13 @@ async function handleRequest(request, response) {
     const routePath = url.pathname.replace(/^\/api(?=\/|$)/, '');
 
     if (routePath === '/access-setting' && request.method === 'GET') {
-      return sendJson(response, 200, { accessMode: readAccessSetting() });
+      return sendJson(response, 200, { accessMode: await readAccessSetting() });
     }
 
     if (routePath === '/application-access' && request.method === 'GET') {
       const session = getSession(request);
       const isAdmin = session && session.role === 'Administrator';
-      if (readAccessSetting() === 'RESTRICTED' && !isAdmin) {
+      if (await readAccessSetting() === 'RESTRICTED' && !isAdmin) {
         return sendJson(response, 403, { message: 'Access Restricted' });
       }
       return sendJson(response, 200, { allowed: true });
@@ -192,13 +256,13 @@ async function handleRequest(request, response) {
         return sendJson(response, 400, { message: 'accessMode must be PUBLIC or RESTRICTED.' });
       }
 
-      writeAccessSetting(body.accessMode);
+      await writeAccessSetting(body.accessMode);
       return sendJson(response, 200, { accessMode: body.accessMode });
     }
 
     return sendJson(response, 404, { message: 'Not found.' });
   } catch (error) {
-    const statusCode = error.message.includes('must be configured') ? 500 : 400;
+    const statusCode = error.statusCode || (error.message.includes('must be configured') ? 500 : 400);
     return sendJson(response, statusCode, { message: error.message });
   }
 }

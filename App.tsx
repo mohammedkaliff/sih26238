@@ -972,6 +972,7 @@ export default function App() {
     try {
       const response = await fetch('/api/access-setting', {
         method: 'PUT',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accessMode: nextMode })
       });
