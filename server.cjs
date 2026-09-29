@@ -4,8 +4,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT_DIR = __dirname;
-const ACCESS_SETTING_FILE = process.env.ACCESS_SETTING_FILE || path.join(ROOT_DIR, 'data', 'access-setting.json');
-const ACCESS_SETTING_KV_KEY = 'sih26238:access-mode';
 
 function loadEnvFile() {
   const envFile = path.join(ROOT_DIR, '.env');
@@ -53,84 +51,6 @@ function createSessionToken(email) {
   })).toString('base64url');
   const signature = crypto.createHmac('sha256', getSessionSecret()).update(payload).digest('base64url');
   return `${payload}.${signature}`;
-}
-
-function getAccessSettingStore() {
-  const url = process.env.KV_REST_API_URL;
-  const token = process.env.KV_REST_API_TOKEN;
-
-  if (url && token) return { url: url.replace(/\/$/, ''), token };
-  if (url || token) {
-    const error = new Error('Both KV_REST_API_URL and KV_REST_API_TOKEN must be configured.');
-    error.statusCode = 503;
-    throw error;
-  }
-  return undefined;
-}
-
-async function requestAccessSettingStore(store, command) {
-  let response;
-  try {
-    response = await fetch(store.url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${store.token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(command)
-    });
-  } catch {
-    const error = new Error('Unable to reach the persistent access-setting store.');
-    error.statusCode = 502;
-    throw error;
-  }
-
-  let result;
-  try {
-    result = await response.json();
-  } catch {
-    result = undefined;
-  }
-  if (!response.ok || result?.error) {
-    const error = new Error('The persistent access-setting store rejected the request.');
-    error.statusCode = 502;
-    throw error;
-  }
-  return result?.result;
-}
-
-function readLocalAccessSetting() {
-  try {
-    const setting = JSON.parse(fs.readFileSync(ACCESS_SETTING_FILE, 'utf8')).accessMode;
-    return setting === 'PUBLIC' ? 'PUBLIC' : 'RESTRICTED';
-  } catch {
-    return 'RESTRICTED';
-  }
-}
-
-async function readAccessSetting() {
-  const store = getAccessSettingStore();
-  if (!store) return readLocalAccessSetting();
-
-  const setting = await requestAccessSettingStore(store, ['GET', ACCESS_SETTING_KV_KEY]);
-  return setting === 'PUBLIC' ? 'PUBLIC' : setting === 'RESTRICTED' ? 'RESTRICTED' : readLocalAccessSetting();
-}
-
-async function writeAccessSetting(accessMode) {
-  const setting = accessMode === 'PUBLIC' ? 'PUBLIC' : 'RESTRICTED';
-  const store = getAccessSettingStore();
-  if (store) {
-    await requestAccessSettingStore(store, ['SET', ACCESS_SETTING_KV_KEY, setting]);
-    return;
-  }
-  if (process.env.VERCEL === '1') {
-    const error = new Error('Configure KV_REST_API_URL and KV_REST_API_TOKEN to persist access settings on Vercel.');
-    error.statusCode = 503;
-    throw error;
-  }
-
-  fs.mkdirSync(path.dirname(ACCESS_SETTING_FILE), { recursive: true });
-  fs.writeFileSync(ACCESS_SETTING_FILE, `${JSON.stringify({ accessMode: setting }, null, 2)}\n`, 'utf8');
 }
 
 function parseCookies(request) {
@@ -201,19 +121,6 @@ async function handleRequest(request, response) {
     const url = new URL(request.url, 'http://localhost');
     const routePath = url.pathname.replace(/^\/api(?=\/|$)/, '');
 
-    if (routePath === '/access-setting' && request.method === 'GET') {
-      return sendJson(response, 200, { accessMode: await readAccessSetting() });
-    }
-
-    if (routePath === '/application-access' && request.method === 'GET') {
-      const session = getSession(request);
-      const isAdmin = session && session.role === 'Administrator';
-      if (await readAccessSetting() === 'RESTRICTED' && !isAdmin) {
-        return sendJson(response, 403, { message: 'Access Restricted' });
-      }
-      return sendJson(response, 200, { allowed: true });
-    }
-
     if (routePath === '/auth/login' && request.method === 'POST') {
       ensureConfiguration();
       const body = await readJsonBody(request);
@@ -245,20 +152,6 @@ async function handleRequest(request, response) {
         : sendJson(response, 401, { authenticated: false });
     }
 
-    if (routePath === '/access-setting' && request.method === 'PUT') {
-      const session = getSession(request);
-      if (!session || session.role !== 'Administrator') {
-        return sendJson(response, 403, { message: 'Administrator authentication is required.' });
-      }
-
-      const body = await readJsonBody(request);
-      if (body.accessMode !== 'PUBLIC' && body.accessMode !== 'RESTRICTED') {
-        return sendJson(response, 400, { message: 'accessMode must be PUBLIC or RESTRICTED.' });
-      }
-      await writeAccessSetting(body.accessMode);
-      return sendJson(response, 200, { accessMode: body.accessMode });
-    }
-
     return sendJson(response, 404, { message: 'Not found.' });
   } catch (error) {
     const statusCode = error.statusCode || (error.message.includes('must be configured') ? 500 : 400);
@@ -280,4 +173,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, handleRequest, readAccessSetting, writeAccessSetting };
+module.exports = { createServer, handleRequest };

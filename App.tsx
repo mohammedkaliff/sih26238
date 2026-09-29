@@ -84,8 +84,6 @@ type EligibilityResult = Scheme & {
   matchPercentage: number;
 };
 
-type AccessMode = 'PUBLIC' | 'RESTRICTED';
-
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
   'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
@@ -529,10 +527,6 @@ export default function App() {
   });
   const [calcResult, setCalcResult] = useState<EligibilityResult[] | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [accessMode, setAccessMode] = useState<AccessMode>('RESTRICTED');
-  const [accessSettingLoading, setAccessSettingLoading] = useState<boolean>(true);
-  const [accessSettingSaving, setAccessSettingSaving] = useState<boolean>(false);
-  const [accessSettingError, setAccessSettingError] = useState<string>('');
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -565,65 +559,7 @@ export default function App() {
       }
     });
     return () => observer.disconnect();
-  }, [activeTab, accessMode, calcResult, forceLogin, isLoggedIn, searchQuery]);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const syncAccessMode = async () => {
-      try {
-        setAccessSettingLoading(true);
-        setAccessSettingError('');
-
-        const [accessResponse, sessionResponse] = await Promise.all([
-          fetch('/api/access-setting'),
-          fetch('/api/auth/me')
-        ]);
-        const data = await readJsonResponse(accessResponse);
-
-        if (!accessResponse.ok) {
-          throw new Error(typeof data.message === 'string' ? data.message : 'Unable to fetch access setting.');
-        }
-
-        if (isMounted) {
-          setAccessMode('PUBLIC');
-
-          if (sessionResponse.ok) {
-            const sessionData = await readJsonResponse(sessionResponse);
-            const sessionUser = sessionData.user as { email?: string; role?: string } | undefined;
-            if (!sessionUser?.email || !sessionUser.role) {
-              throw new Error('The authentication session response is invalid.');
-            }
-            setCurrentUser({
-              id: 'administrator',
-              name: 'Administrator',
-              email: sessionUser.email,
-              role: sessionUser.role,
-              avatar: 'A'
-            });
-            setIsLoggedIn(true);
-          }
-        }
-      } catch (error) {
-        if (isMounted) {
-          setAccessMode('RESTRICTED');
-          setAccessSettingError(
-            error instanceof Error ? error.message : 'Unable to load access setting.'
-          );
-        }
-      } finally {
-        if (isMounted) {
-          setAccessSettingLoading(false);
-        }
-      }
-    };
-
-    syncAccessMode();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  }, [activeTab, calcResult, forceLogin, isLoggedIn, searchQuery]);
 
   const [schemes] = useState<Scheme[]>([
     {
@@ -959,45 +895,6 @@ export default function App() {
     showToast(`Application ${appId} approved and DBT sanctioned.`);
   };
 
-  const handleAccessModeToggle = async () => {
-    if (!showAdminPortal) {
-      return;
-    }
-
-    const nextMode: AccessMode = accessMode === 'PUBLIC' ? 'RESTRICTED' : 'PUBLIC';
-
-    setAccessSettingSaving(true);
-    setAccessSettingError('');
-
-    try {
-      const response = await fetch('/api/access-setting', {
-        method: 'PUT',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accessMode: nextMode })
-      });
-
-      const data = await readJsonResponse(response);
-
-      if (!response.ok) {
-        throw new Error(typeof data.message === 'string' ? data.message : 'Unable to update access setting.');
-      }
-
-      if (data.accessMode !== 'PUBLIC' && data.accessMode !== 'RESTRICTED') {
-        throw new Error('The server returned an invalid access setting.');
-      }
-
-      setAccessMode(data.accessMode);
-      showToast(`Access updated to ${data.accessMode === 'PUBLIC' ? 'Public' : 'Restricted'} mode.`);
-    } catch (error) {
-      setAccessSettingError(
-        error instanceof Error ? error.message : 'Unable to update access setting.'
-      );
-    } finally {
-      setAccessSettingSaving(false);
-    }
-  };
-
   const handleBackToSchemes = () => {
     setIsApplyModalOpen(false);
     setSelectedSchemeForApply(null);
@@ -1005,9 +902,8 @@ export default function App() {
   };
 
   const showAdminPortal = isLoggedIn && isAuthorizedUser;
-  const isAccessAllowed = accessMode === 'PUBLIC' || showAdminPortal;
 
-  if ((accessMode === 'RESTRICTED' && !showAdminPortal) || forceLogin) {
+  if (forceLogin) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-4 font-sans relative overflow-hidden">
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -1103,6 +999,14 @@ export default function App() {
         </div>
         <button
           onClick={async () => {
+            if (!isLoggedIn) {
+              setAuthError('');
+              setCustomEmailInput('');
+              setLoginPassword('');
+              setForceLogin(true);
+              return;
+            }
+
             try {
               const response = await fetch('/api/auth/logout', { method: 'POST' });
               const data = await readJsonResponse(response);
@@ -1234,48 +1138,7 @@ export default function App() {
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <h2 className="text-xl font-extrabold text-white">Admin Approval Desk</h2>
-                <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2">
-                  <span className="text-[10px] uppercase tracking-wider text-slate-400">Current State</span>
-                  <span className={`text-sm font-bold ${accessMode === 'PUBLIC' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                    {accessMode === 'PUBLIC' ? 'Public' : 'Restricted'}
-                  </span>
-                </div>
               </div>
-
-              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-slate-400">Public / Restricted</div>
-                  <div className="text-sm text-white mt-1">{accessMode === 'PUBLIC' ? 'Public access is enabled.' : 'Restricted access is enabled.'}</div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <span className={`text-xs font-bold ${accessMode === 'PUBLIC' ? 'text-emerald-400' : 'text-slate-300'}`}>
-                    {accessMode === 'PUBLIC' ? 'Public' : 'Restricted'}
-                  </span>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={accessMode === 'RESTRICTED'}
-                      onChange={handleAccessModeToggle}
-                      disabled={accessSettingSaving || accessSettingLoading}
-                      className="sr-only peer"
-                    />
-                    <span className="w-12 h-6 bg-slate-800 rounded-full peer-checked:bg-emerald-500 transition-colors duration-200 relative">
-                      <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform duration-200 peer-checked:translate-x-6" />
-                    </span>
-                  </label>
-                </div>
-              </div>
-
-              {accessSettingSaving && (
-                <div className="text-xs text-amber-300">Saving access settings...</div>
-              )}
-
-              {accessSettingError && (
-                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-                  {accessSettingError}
-                </div>
-              )}
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-slate-300">
