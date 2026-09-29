@@ -255,7 +255,6 @@ async function handleRequest(request, response) {
       if (body.accessMode !== 'PUBLIC' && body.accessMode !== 'RESTRICTED') {
         return sendJson(response, 400, { message: 'accessMode must be PUBLIC or RESTRICTED.' });
       }
-
       await writeAccessSetting(body.accessMode);
       return sendJson(response, 200, { accessMode: body.accessMode });
     }
