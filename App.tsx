@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 
 type Account = {
   id: string;
@@ -1387,6 +1388,7 @@ export default function App() {
       <footer className="bg-slate-950 border-t border-slate-800 py-6 text-center text-xs text-slate-500">
         tribalscholarship.application.com &bull; Ministry of Tribal Affairs
       </footer>
+      <Analytics />
     </div>
   );
 }
